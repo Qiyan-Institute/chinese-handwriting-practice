@@ -1,0 +1,154 @@
+{
+  "format": "hanzi-worksheet-studio-v2",
+  "sourceText": "孫中山",
+  "blocks": [
+    {
+      "id": "sun-yat-sen-01",
+      "type": "character",
+      "text": "孫",
+      "count": 5,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "sun-yat-sen-02",
+      "type": "character",
+      "text": "中",
+      "count": 5,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "sun-yat-sen-03",
+      "type": "character",
+      "text": "山",
+      "count": 5,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "sun-yat-sen-04",
+      "type": "heading",
+      "text": "連寫練習（孫中山）",
+      "sub": "可自訂描紅及空白格比例"
+    },
+    {
+      "id": "sun-yat-sen-05",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    },
+    {
+      "id": "sun-yat-sen-06",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    },
+    {
+      "id": "sun-yat-sen-07",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    },
+    {
+      "id": "sun-yat-sen-08",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    },
+    {
+      "id": "sun-yat-sen-09",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    },
+    {
+      "id": "sun-yat-sen-10",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    },
+    {
+      "id": "sun-yat-sen-11",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    },
+    {
+      "id": "sun-yat-sen-12",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    },
+    {
+      "id": "sun-yat-sen-13",
+      "type": "practice",
+      "text": "孫中山",
+      "count": 6,
+      "light1": 26,
+      "light2": 15,
+      "signature": false,
+      "label": "",
+      "manual": null
+    }
+  ],
+  "customAssets": {},
+  "assetMetadata": {},
+  "pageTitle": "孫中山 · 書寫練習",
+  "showTitle": true,
+  "showName": false,
+  "showClass": false,
+  "showDate": false,
+  "pageLabel": "姓名",
+  "studentName": "",
+  "className": "",
+  "practiceDate": "",
+  "blankStyle": "grid",
+  "appliedText": "孫中山"
+}

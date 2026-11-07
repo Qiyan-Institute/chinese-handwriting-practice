@@ -4,7 +4,7 @@
  */
 export const CELLS_PER_ROW = 12;
 export const FORMAT = 'hanzi-worksheet-studio-v2';
-export const DEFAULT_TEXT = '天地人';
+export const DEFAULT_TEXT = '孫中山';
 export const DEFAULT_TITLE = '正體字書寫練習';
 
 export function documentSettings(data={}) {

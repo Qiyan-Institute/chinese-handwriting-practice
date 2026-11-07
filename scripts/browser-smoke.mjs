@@ -128,16 +128,16 @@ try {
   await click('#removeBlock');await click('#undoBtn');
   assert.equal(await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)"),beforeDelete);
   const beforeDraft=await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)");
-  await input('#sourceText','地天');
+  await input('#sourceText','中孫');
   assert.equal(await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)"),beforeDraft);
   assert(await evaluate("document.getElementById('textUpdateStatus').textContent.includes('尚未套用')"));
   await click('#applyText');
-  assert(await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks.filter(b=>b.type==='character').map(b=>b.text).join('')==='地天'"));
+  assert(await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks.filter(b=>b.type==='character').map(b=>b.text).join('')==='中孫'"));
   await click('#undoBtn');
   assert.equal(await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)"),beforeDraft);
-  assert.equal(await evaluate("document.getElementById('sourceText').value"),'地天');
+  assert.equal(await evaluate("document.getElementById('sourceText').value"),'中孫');
   await click('#redoBtn');
-  assert(await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).appliedText==='地天'"));
+  assert(await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).appliedText==='中孫'"));
   passed.push('清空與複製可撤銷／重做，新修改清除重做分支；輸入草稿不改字帖，套用文字可整次恢復');
   const beforeTemplate=await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)");
   dialogAnswer=false;await evaluate("document.getElementById('templateBlank').click()");
@@ -167,7 +167,7 @@ try {
   passed.push('選取不會填字、實際空白格計數、清空行保留米字格且沒有字圖');
   await evaluate("document.getElementById('headerOptions').open=true;document.getElementById('showName').click();document.getElementById('showClass').click();document.getElementById('showDate').click()");
   await input('#studentName','小朋友');await input('#className','三年級');await input('#practiceDate','2026/11/06');
-  assert(await evaluate("document.querySelector('.sheet-meta').textContent.includes('姓名：小朋友') && !document.querySelector('.sheet-meta').textContent.includes('天地人')"));
+  assert(await evaluate("document.querySelector('.sheet-meta').textContent.includes('姓名：小朋友') && !document.querySelector('.sheet-meta').textContent.includes('孫中山')"));
   await click('#cleanLayout');
   await click('#showTitle');
   assert(await evaluate("!document.querySelector('.sheet-header') && !document.querySelector('.sign')"));
@@ -267,7 +267,7 @@ try {
   await evaluate("document.querySelector('[data-glyph]').click()");
   const firstCell="[data-block-type='practice'] [data-cell-block][data-cell-index='0']";
   await click(firstCell);
-  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(firstCell)}).textContent.trim() || document.querySelector(${JSON.stringify(firstCell)}).querySelector('img')?.alt`),'天');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(firstCell)}).textContent.trim() || document.querySelector(${JSON.stringify(firstCell)}).querySelector('img')?.alt`),'孫');
   await evaluate(`document.querySelector(${JSON.stringify(firstCell)}).dispatchEvent(new MouseEvent('click',{bubbles:true,shiftKey:true}))`);
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(firstCell)}).textContent.trim()`),'');
   passed.push('實際滑鼠填字、Shift 清空字格');
