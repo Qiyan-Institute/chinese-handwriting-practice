@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>正體字帖工坊｜繁體字描紅與筆順練習</title>
+<link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">字</div><div><strong>正體字帖工坊</strong><span>繁體字描紅 · 標準筆順 · A4 練習字帖</span></div></div>
+  <div class="top-actions"><button id="undoBtn" disabled title="撤銷（在編輯區按 ⌘/Ctrl+Z）">↶ 撤銷</button><button id="redoBtn" disabled title="重做（⌘/Ctrl+Shift+Z 或 Ctrl+Y）">↷ 重做</button><button id="downloadProject">儲存專案</button><button id="loadBtn">開啟專案</button><button id="printBtn" class="primary">列印 / 另存 PDF ↗</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
+</header>
+<div class="tool-layout">
+  <aside class="panel">
+    <div class="section-ui"><div class="smallcap">01 · 字帖內容</div><h2 style="margin-top:7px">輸入任意繁體字</h2>
+      <textarea class="field-input" id="sourceText" rows="2" maxlength="500" aria-label="字帖練習文字" placeholder="例如：天地人、春眠不覺曉、海闊天空">天地人</textarea>
+      <button id="applyText" class="primary" style="width:100%;margin-top:8px" disabled>更新現有字帖文字</button>
+      <div id="textUpdateStatus" class="legend" role="status"></div>
+      <label class="field" for="pageTitle">頁面標題</label><input class="field-input" id="pageTitle" maxlength="120" value="正體字書寫練習">
+      <label class="switch"><span>顯示頁面標題</span><input id="showTitle" type="checkbox" checked></label>
+      <details id="headerOptions" class="options-details"><summary>可選抬頭與簽核</summary>
+        <label class="switch"><span>顯示姓名欄</span><input id="showName" type="checkbox"></label>
+        <label class="field" for="pageLabel">欄位名稱</label><input class="field-input" id="pageLabel" maxlength="40" value="姓名">
+        <label class="field" for="studentName">填寫內容（留空顯示橫線）</label><input class="field-input" id="studentName" maxlength="80" placeholder="不會自動填入練習文字">
+        <label class="switch"><span>顯示班級欄</span><input id="showClass" type="checkbox"></label><input class="field-input" id="className" maxlength="80" aria-label="班級內容" placeholder="留空顯示橫線">
+        <label class="switch"><span>顯示日期欄</span><input id="showDate" type="checkbox"></label><input class="field-input" id="practiceDate" maxlength="40" aria-label="日期內容" placeholder="留空顯示橫線">
+        <label class="switch"><span>所有練習行顯示簽核</span><input id="allSignatures" type="checkbox"></label>
+        <button id="cleanLayout" class="mini" style="width:100%">關閉抬頭欄位與全部簽核</button>
+      </details>
+      <label class="field" for="blankStyle">空白格樣式</label><select class="field-input" id="blankStyle"><option value="grid">保留米字格，不填字</option><option value="space">無格線，直接留白</option></select>
+      <div class="glyph-tray" id="glyphTray"></div>
+      <div class="legend">一般點格子只選取。先選字塊可切換填字；Shift＋點格子清空，也可拖放文字。</div>
+      <div class="btn-grid"><button id="addTextRow">＋ 加入描紅行</button><button id="addCharPractice">＋ 拆成單字</button><button id="addBlankRow">＋ 空白練習行</button><button id="addHeading">＋ 分組標題</button></div>
+    </div>
+    <div class="section-ui"><div class="smallcap">02 · 教學範本</div><h2 style="margin-top:7px">循序漸進</h2>
+      <div class="template-row"><button id="templateV1">第一版 · 全描紅</button><button id="templateV2">第二版 · 半描紅</button><button id="templateWord">單字 / 生字</button><button id="templateBlank">純空白米字格</button></div>
+      <p>重新套用範本會重建編排，可按「撤銷」恢復。只更新文字請使用上方「更新現有字帖文字」。</p>
+    </div>
+    <div class="section-ui"><div class="smallcap">03 · 字形與筆順</div><h2 style="margin-top:7px">標準楷體與逐筆示範</h2>
+      <div class="tip">新字會自動補載字形與逐筆素材；你自行匯入的圖片優先保留。</div>
+      <div class="legend" id="strokeLoadStatus" role="status">正在核對字帖素材…</div>
+      <button id="retryStrokes" hidden style="width:100%">重試缺字筆順</button>
+      <label class="field" for="importChar">查詢／匯入單字</label><input class="field-input" id="importChar" value="學" maxlength="2" placeholder="一個字">
+      <a id="officialLookup" href="https://stroke-order.learningweb.moe.edu.tw/searchW.jsp?ID2=1" target="_blank" rel="noopener noreferrer" class="official-link">到教育部查「學」↗</a>
+      <div class="legend" id="assetInfo" aria-live="polite"></div>
+      <button id="showOfficial" style="width:100%" disabled>播放官方原始筆順動畫</button>
+      <div class="legend" id="officialStatus" aria-live="polite"></div>
+      <details id="assetAdvanced" class="options-details"><summary>素材來源與自行匯入</summary>
+      <p>官方素材的署名統一附於文件末尾「素材來源」頁，不重複放在練習頁。動畫只供線上查看。</p>
+      <label class="field">匯入逐筆圖片（PNG / SVG，依序命名）</label><input class="field-input" id="stageFiles" type="file" multiple accept="image/png,image/svg+xml">
+      <div class="legend">官方收錄的字會自動補載。也可自行選擇每一步的累積圖片，依 01.png、02.png…排序，覆蓋同字的官方素材。</div>
+      <label class="field" for="assetSource">素材來源名稱</label><input class="field-input" id="assetSource" maxlength="1000" placeholder="例如：自行繪製／授權提供者">
+      <label class="field" for="assetSourceUrl">來源網址（選填）</label><input class="field-input" id="assetSourceUrl" type="url" maxlength="1000" placeholder="https://…">
+      <label class="field" for="assetLicense">適用授權／許可範圍</label><input class="field-input" id="assetLicense" maxlength="1000" placeholder="填寫具體授權及版本，或私人使用許可">
+      <label class="field" for="assetAttribution">署名文字（選填）</label><input class="field-input" id="assetAttribution" maxlength="1000" placeholder="依素材條款填寫署名">
+      <label class="switch"><span>我已確認這批素材可用於本次用途</span><input type="checkbox" id="rightsConfirmed"></label>
+      <button id="importStages" style="width:100%">匯入並驗證頁數</button>
+      <a href="https://stroke-order.learningweb.moe.edu.tw/searchW.jsp?ID2=1" target="_blank" rel="noopener" style="color:#376d68;font-size:12px;display:block;margin-top:12px">前往教育部標準筆順網站 ↗</a>
+      </details>
+    </div>
+    <div class="section-ui"><div class="smallcap">開源與素材</div><p>程式碼採 AGPL-3.0 授權，可依法商用。官方字形與筆順素材獨立適用非商業授權，不包含在程式碼授權內。</p><a class="official-link" href="https://github.com/Qiyan-Institute/chinese-handwriting-practice" target="_blank" rel="noopener noreferrer">查看源碼與使用說明 ↗</a></div>
+  </aside>
+  <main class="workspace"><div class="workspace-head"><div><b>多頁 A4 預覽</b><br><small>點選區塊編輯 · 拖拽可跨頁調整順序</small></div><div><small id="pageStatus"></small></div></div><div class="editor-controls"><label for="cellMode">字格操作</label><select id="cellMode"><option value="select">選取區塊</option><option value="fill">填入選中字</option><option value="erase">清空字格</option></select><nav class="page-navigation" aria-label="字帖頁面"><button id="previousPage" aria-label="上一頁">←</button><select id="pageSelect" aria-label="前往頁面"></select><button id="nextPage" aria-label="下一頁">→</button></nav></div><div id="sheet" class="sheets"></div></main>
+  <aside class="panel right"><div class="smallcap">屬性檢查器</div><h2 style="margin-top:7px">選中區塊的設定</h2><div id="inspector"></div></aside>
+</div>
+<div id="toast" class="toast" role="status"></div>
+<dialog id="officialDialog" class="official-dialog" aria-labelledby="officialDialogTitle">
+  <div class="dialog-head"><strong id="officialDialogTitle">教育部標準筆順</strong><button id="closeOfficial" aria-label="關閉官方動畫">✕</button></div>
+  <iframe id="officialFrame" title="教育部原始筆順動畫" width="300" height="520" allow="fullscreen" referrerpolicy="no-referrer"></iframe>
+  <p>中華民國教育部 · <a href="https://stroke-order.learningweb.moe.edu.tw/" target="_blank" rel="noopener noreferrer">國字標準字體筆順學習網</a><br><a href="https://stroke-order.learningweb.moe.edu.tw/page.jsp?ID=52" target="_blank" rel="noopener noreferrer">CC BY-NC-ND 3.0 臺灣版／官方版權說明</a></p>
+  <p>需要網路；若動畫未顯示，可關閉視窗後使用官網查詢連結。</p>
+</dialog>
+<script type="module" src="./src/main.js"></script>
+
+</body></html>
