@@ -10,3 +10,5 @@ source-pdfs/
 assets/strokes/
 docs/review-*/
 private-backup/
+dist/
+.sites-runtime/

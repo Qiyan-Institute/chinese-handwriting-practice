@@ -16,7 +16,7 @@ await mkdir(output, {recursive:true});
 console.log(`QA output: ${output}`);
 const port = Number(process.env.QA_PORT || 4187);
 const chromePath = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const server = spawn(process.execPath, ['scripts/serve.mjs'], {cwd:root, env:{...process.env, PORT:String(port)}, stdio:'pipe'});
+const server = spawn(process.execPath, [process.env.QA_HOSTED==='1'?'scripts/serve-hosted.mjs':'scripts/serve.mjs'], {cwd:root, env:{...process.env, PORT:String(port)}, stdio:'pipe'});
 const chrome = spawn(chromePath, ['--headless=new','--no-first-run','--no-default-browser-check',
   '--disable-background-networking', '--remote-debugging-port=0', `--user-data-dir=${path.join(temporary,'chrome')}`,
   '--window-size=1500,1000', 'about:blank'], {stdio:'pipe'});
