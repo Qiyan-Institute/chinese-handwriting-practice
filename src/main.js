@@ -3,15 +3,15 @@ import {
   CELLS_PER_ROW, DEFAULT_TEXT, characters, newId, clamp,
   createPracticeRow, createCharacterBlock, createHeading, createTemplate,
   cellsForRow, cellCounts, charactersInBlocks, officialCredits, documentSettings, createProject, validateProject,
-} from './model.js?v=0.5.4';
+} from './model.js?v=0.5.5';
 import {getStages, getGlyphUrl, safeImageUrl, importStrokeImages, officialLookupUrl, getAssetInfo, fetchOfficialStages} from './stroke-service.js';
-import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.5.4';
+import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.5.5';
 import {getPaperSize} from './paper.js';
-import {getGridStyle} from './grid-style.js';
+import {getGridStyle} from './grid-style.js?v=0.5.5';
 import {officialEmbedUrl} from './moe.js';
 import {DocumentHistory} from './history.js';
 import {updateWorksheetText} from './text-update.js';
-import {downloadWorksheetPdf, waitForImages} from './pdf-export.js?v=0.5.4';
+import {downloadWorksheetPdf, waitForImages} from './pdf-export.js?v=0.5.5';
 
 // 編輯和排版都在本機執行；缺字由本機服務向教育部請求字卡。
 const $ = id => document.getElementById(id);
@@ -300,13 +300,14 @@ function renderInspector() {
     $('inspector').innerHTML = '<div class="inspector-empty">點選紙張上的區塊，即可調整其內容、描紅及順序。</div>';
     return;
   }
-  const large=documentOptions().gridSize==='large';
-  const typeName = {heading:'分組標題', character:'單字逐筆', practice:large?'大格練習組 · 2 行':'12 格練習行'}[block.type];
+  const grid=getGridStyle(documentOptions().gridSize);
+  const multiline=grid.rows>1;
+  const typeName = {heading:'分組標題', character:'單字逐筆', practice:multiline?`${grid.label}練習組 · 2 行`:'12 格練習行'}[block.type];
   let html = `<div class="inspector-type">${typeName}</div>`+
     `<label class="field">${block.type === 'heading' ? '標題' : block.type === 'character' ? '單字' : '練習文字'}</label>`+
     `<input class="field-input" id="insText" value="${escapeHtml(block.text)}">`+
     `<div class="help">${block.type === 'character' ? '只顯示已取得來源的真正逐筆素材。' :
-      block.type === 'practice' ? large?'每組 12 格，分成 2 行，每行 6 個大格。':'文字自動重複排列在 12 個米字格中。' : ''}</div>`;
+      block.type === 'practice' ? multiline?`每組 12 格，分成 ${grid.columns}＋${12-grid.columns} 格兩行。`:'文字自動重複排列在 12 個米字格中。' : ''}</div>`;
 
   if (block.type === 'heading') {
     html += `<label class="field">副標題</label><input class="field-input" id="insSub" value="${escapeHtml(block.sub || '')}">`;
@@ -314,7 +315,7 @@ function renderInspector() {
     html += `<div class="cell-summary" id="cellSummary" role="status"></div><label class="field">自動填字格數 <span id="countValue">${block.count}</span> / 12</label>`+
       `<input type="range" id="insCount" min="0" max="12" value="${block.count}" class="range">`+
       `<div class="help">空白格內不放文字或字圖；格線樣式可在左側設定。</div>`+
-      `<button id="clearRow" class="mini" style="width:100%;margin-top:8px">${large?'清空本組 12 格':'清空本行 12 格'}</button>`;
+      `<button id="clearRow" class="mini" style="width:100%;margin-top:8px">${multiline?'清空本組 12 格':'清空本行 12 格'}</button>`;
     {
       html += `<label class="field">第一組灰度 <span id="light1Value">${block.light1}%</span></label>`+
         `<input type="range" id="insLight1" min="5" max="90" value="${block.light1}" class="range">`+

@@ -92,3 +92,15 @@ test('大格重排 A4 及 Letter，64 畫、標題和練習組均完整且不溢
     assert.equal(group.entries[at+1].block.id,blocks[2].id);
   }
 });
+
+test('中型 A4／Letter 的可用行數介於標準與大格之間，保留全部區塊',()=>{
+  const blocks=Array.from({length:24},()=>createPracticeRow('孫中山',8));
+  for(const paper of ['a4','letter']) {
+    const small=paginate(blocks,()=>0,98,paper);
+    const medium=paginate(blocks,()=>0,98,paper,'medium');
+    const large=paginate(blocks,()=>0,98,paper,'large');
+    assert(medium.length>small.length);assert(medium.length<large.length);
+    assert(medium.every(page=>page.used<=(paper==='letter'?880:947)));
+    assert.deepEqual(medium.flatMap(page=>page.entries.map(entry=>entry.block.id)),blocks.map(block=>block.id));
+  }
+});

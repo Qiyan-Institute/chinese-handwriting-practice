@@ -81,3 +81,14 @@ test('大格樣式隨 JSON 保存且不更改原有手動字格，舊檔仍為�
   assert.equal(restored.gridSize,'large');assert.equal(restored.paperSize,'letter');
   assert.deepEqual(restored.blocks,validateProject(original).blocks);
 });
+
+test('中型字格隨專案往返，切換樣式不新增或遺失手動字格',()=>{
+  const row=createPracticeRow('孫中山',8);
+  row.manual=Array.from({length:12},(_,i)=>({ch:i===11?'山':'',opacity:i===11?.5:0}));
+  const saved={...createProject('孫中山',[row]),gridSize:'medium',paperSize:'letter'};
+  const restored=validateProject(JSON.parse(JSON.stringify(saved)));
+  assert.equal(restored.gridSize,'medium');assert.equal(restored.paperSize,'letter');
+  assert.equal(cellsForRow(restored.blocks[0]).length,12);
+  assert.deepEqual(restored.blocks[0].manual,row.manual);
+  assert.deepEqual(cellCounts(restored.blocks[0]),{filled:1,blank:11});
+});

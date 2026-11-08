@@ -471,6 +471,51 @@ try {
   assert((await layout()).every(page=>page.fits&&page.scrollFits));
   await cdp('Emulation.setDeviceMetricsOverride',{width:1500,height:1000,deviceScaleFactor:1,mobile:false});
   passed.push('64 畫與大格簽核不溢位，A4／Letter 及窄螢幕正確重排，大格 PDF 頁數與預覽一致');
+  const mediumFixture=path.join(temporary,'medium-fixture.json');
+  await writeFile(mediumFixture,JSON.stringify({...largeProject,sourceText:'中型驗證',appliedText:'中型驗證',gridSize:'large'}));
+  await setFiles('#loadJson',[mediumFixture]);
+  await waitFor(()=>evaluate("document.getElementById('sourceText').value==='中型驗證'"),'中型測試專案');
+  const beforeMedium=await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)");
+  const beforeMediumPages=await evaluate("document.querySelectorAll('.worksheet-page').length");
+  await input('#gridSize','medium','change');
+  assert((await evaluate("document.querySelectorAll('.worksheet-page').length"))<beforeMediumPages);
+  assert((await layout()).every(page=>page.fits&&page.scrollFits));
+  assert(await evaluate(`(()=>{
+    const grid=document.querySelector('[data-block="large-manual"] .practice-grid');
+    const first=grid.children[0].getBoundingClientRect(),lastTop=grid.children[7].getBoundingClientRect(),bottom=grid.children[8].getBoundingClientRect();
+    return grid.children.length===12&&Math.abs(first.width-76.25)<.1&&Math.abs(first.height-first.width)<.1&&
+      Math.abs(lastTop.top-first.top)<.1&&Math.abs(bottom.top-first.bottom)<.1&&Math.abs(bottom.left-first.left)<.1&&
+      Math.abs(grid.getBoundingClientRect().height-152.5)<.1;
+  })()`));
+  assert.equal(await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)"),beforeMedium);
+  await click('#undoBtn');assert.equal(await evaluate("document.getElementById('gridSize').value"),'large');
+  await click('#redoBtn');assert.equal(await evaluate("document.getElementById('gridSize').value"),'medium');
+  await click('[data-block="large-manual"] [data-cell-index="8"]');
+  assert(await evaluate("document.getElementById('inspector').textContent.includes('8＋4') && document.getElementById('clearRow').textContent.includes('本組')"));
+  await click('#downloadProject');
+  const mediumJson=await waitFor(async ()=>(await readdir(output)).find(name=>name.includes('中型驗證')&&name.endsWith('.json')),'中型 JSON');
+  assert.equal(JSON.parse(await readFile(path.join(output,mediumJson),'utf8')).gridSize,'medium');
+  await input('#gridSize','standard','change');await setFiles('#loadJson',[path.join(output,mediumJson)]);
+  await waitFor(()=>evaluate("document.getElementById('gridSize').value==='medium'"),'中型 JSON 還原');
+  passed.push('中型字格約 2.0 cm、方形米字格、8＋4 兩行，原有 12 格與撤銷及 JSON 均正常');
+  const mediumPages=await evaluate("document.querySelectorAll('.sheet').length");
+  const nativeMedium=await cdp('Page.printToPDF',{printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false});
+  const nativeMediumBytes=Buffer.from(nativeMedium.data,'base64');
+  assert.equal([...nativeMediumBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,mediumPages);
+  await writeFile(path.join(output,'medium-letter-print.pdf'),nativeMediumBytes);
+  const beforeMediumPdf=new Set(await readdir(output));
+  await click('#downloadPdf');
+  const mediumDownload=await waitFor(async ()=>(await readdir(output)).find(name=>!beforeMediumPdf.has(name)&&name.endsWith('.pdf')),'中型直接 PDF',60000);
+  const mediumBytes=await readFile(path.join(output,mediumDownload));
+  assert.equal([...mediumBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,mediumPages);
+  const mediumBoxes=[...mediumBytes.toString('latin1').matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)];
+  assert(mediumBoxes.length&&mediumBoxes.every(box=>Math.abs(Number(box[1])-612)<.05&&Math.abs(Number(box[2])-792)<.05));
+  await input('#paperSize','a4','change');
+  assert((await layout()).every(page=>page.fits&&page.scrollFits));
+  await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  assert((await layout()).every(page=>page.fits&&page.scrollFits));
+  await cdp('Emulation.setDeviceMetricsOverride',{width:1500,height:1000,deviceScaleFactor:1,mobile:false});
+  passed.push('中型 64 畫及簽核不溢位、A4／Letter 重排與下載 PDF 頁數正確');
   if(process.env.QA_PDF_PROJECT) {
     await setFiles('#loadJson',[path.resolve(process.env.QA_PDF_PROJECT)]);
     await waitFor(()=>evaluate("document.getElementById('toast').textContent.includes('已載入字帖專案')"),'真實字卡專案');

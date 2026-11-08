@@ -3,7 +3,7 @@
  * 版型與文字資料模型。純函式，不讀寫 DOM，方便測試、替換 UI。
  */
 import {getPaperSize} from './paper.js';
-import {getGridStyle} from './grid-style.js';
+import {getGridStyle} from './grid-style.js?v=0.5.5';
 
 export const CELLS_PER_ROW = 12;
 export const FORMAT = 'hanzi-worksheet-studio-v2';
