@@ -1,7 +1,7 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import {parseHostedStrokeArchive,readBounded} from './stroke-archive.js';
 
-export function createHostedApp(assets,{fetcher=fetch,now=()=>Date.now()}={}) {
+export function createHostedApp(assets,{fetcher=(input,init)=>globalThis.fetch(input,init),now=()=>Date.now()}={}) {
   const index=JSON.parse(assets['/assets/moe-index.json'].body);
   const supported=new Set(index.characters),pending=new Map(),cache=new Map(),visitors=new Map();
   const headers={'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'};
@@ -15,8 +15,8 @@ export function createHostedApp(assets,{fetcher=fetch,now=()=>Date.now()}={}) {
       let stages;
       for(let attempt=0;attempt<2;attempt++) {
         try {
-          const response=await fetcher(sourceUrl,{signal:AbortSignal.timeout(15000),redirect:'error',headers:{Accept:'application/zip'}});
-          if(!response.ok||!response.body)throw new Error('官方下載暫時無法連線');
+          const response=await fetcher(sourceUrl,{signal:AbortSignal.timeout(15000),redirect:'manual',headers:{Accept:'application/zip'}});
+          if(!response.ok||!response.body)throw new Error(`Official download HTTP ${response.status}`);
           stages=await parseHostedStrokeArchive(await readBounded(response.body,8*1024*1024),ch);break;
         } catch(error) {if(attempt===1)throw error;}
       }
@@ -53,7 +53,7 @@ export function createHostedApp(assets,{fetcher=fetch,now=()=>Date.now()}={}) {
         visitors.set(key,{count:1,until:current+60000});
       }
       try{return json(await loadCard(ch));}
-      catch(error){return json({error:error.status?error.message:'官方字卡暫時無法載入，請按「重試缺字筆順」。'},error.status||502);}
+      catch(error){console.error('Official stroke download failed',{name:error.name,message:error.message});return json({error:error.status?error.message:'官方字卡暫時無法載入，請按「重試缺字筆順」。'},error.status||502);}
     }
     let pathname;
     try{pathname=decodeURIComponent(url.pathname);}catch{return new Response('Bad path',{status:400,headers});}

@@ -48,8 +48,9 @@ test('雲端僅提供打包資產及 GET／HEAD，不暴露 Git、環境檔或�
 
 test('雲端按需下載原始 SVG、去重與快取，來源與官方網域固定',async()=>{
   let calls=0;
-  const app=createHostedApp(assets,{fetcher:async url=>{
+  const app=createHostedApp(assets,{fetcher:async(url,options)=>{
     calls++;assert.equal(new URL(url).hostname,'stroke-order.learningweb.moe.edu.tw');
+    assert.equal(options.redirect,'manual');
     assert.equal(new URL(url).searchParams.get('WORD'),'學');
     return new Response(fixture());
   }});
@@ -68,6 +69,15 @@ test('雲端拒絕未知字、多字、跨站代理；下載失敗可恢復',asy
   assert.equal(calls,0);
   assert.equal((await app.fetch(request('/api/moe/strokes?character=學'))).status,502);
   fail=false;assert.equal((await app.fetch(request('/api/moe/strokes?character=學'))).status,200);
+});
+
+test('預設 Fetch 保留雲端 Web API 所需的 globalThis 接收者',async()=>{
+  const original=globalThis.fetch;
+  try {
+    globalThis.fetch=async function(){assert.equal(this,globalThis);return new Response(fixture());};
+    const app=createHostedApp(assets);
+    assert.equal((await app.fetch(request('/api/moe/strokes?character=學'))).status,200);
+  } finally {globalThis.fetch=original;}
 });
 
 test('公開接口有暫存節流，解壓縮有串流大小界線',async()=>{
