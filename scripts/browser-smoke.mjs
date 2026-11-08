@@ -47,10 +47,18 @@ try {
   const pending=new Map();
   let mockRequests=0;
   let dialogAnswer=true;
+  let failPdfLibrary=false;
   ws.addEventListener('message', event=>{
     const message=JSON.parse(event.data);
     if(message.method==='Fetch.requestPaused') {
       const request=message.params;
+      if(request.request.url.includes('/vendor-jspdf.umd.min.js')) {
+        if(failPdfLibrary) {
+          failPdfLibrary=false;
+          send('Fetch.fulfillRequest',{requestId:request.requestId,responseCode:503,body:''},message.sessionId).catch(()=>{});
+        } else send('Fetch.continueRequest',{requestId:request.requestId},message.sessionId).catch(()=>{});
+        return;
+      }
       const ch=new URL(request.request.url).searchParams.get('character');
       const svg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="540" height="540" viewBox="0 0 540 540"><path d="M80 80 L460 460" stroke="black" stroke-width="24"/></svg>').toString('base64');
       const payload={character:ch,stages:['data:image/svg+xml;base64,'+svg],metadata:{sourceName:'合成測試圖片',license:'test fixture',attribution:'不代表真實字形'}};
@@ -100,9 +108,9 @@ try {
         fits:[...page.querySelectorAll('.block')].every(block=>block.getBoundingClientRect().bottom<=body.bottom+1),
         scrollFits:page.scrollHeight<=page.clientHeight+1};});})()`);
   await cdp('Page.enable');await cdp('Runtime.enable');
-  await cdp('Fetch.enable',{patterns:[{urlPattern:'*/api/moe/strokes?*'}]});
+  await cdp('Fetch.enable',{patterns:[{urlPattern:'*/api/moe/strokes?*'},{urlPattern:'*/vendor-jspdf.umd.min.js'}]});
   await cdp('Emulation.setDeviceMetricsOverride',{width:1500,height:1000,deviceScaleFactor:1,mobile:false});
-  await cdp('Page.navigate',{url:`http://127.0.0.1:${port}`});
+  await cdp('Page.navigate',{url:process.env.QA_URL||`http://127.0.0.1:${port}`});
   await waitFor(()=>evaluate("document.querySelectorAll('.worksheet-page').length === 1 && document.getElementById('officialStatus').textContent.includes('6063')"),'編輯器及 6063 字索引');
   await evaluate('Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))');
   assert.equal(await evaluate("document.querySelectorAll('[data-block-type=\"practice\"] [data-cell-block]').length"),108);
@@ -163,7 +171,7 @@ try {
   assert(await evaluate("document.getElementById('cellSummary').textContent.includes('空白 9 格')"));
   await click('#clearRow');
   assert(await evaluate("document.getElementById('cellSummary').textContent.includes('空白 12 格')"));
-  assert(await evaluate("[...document.querySelector('.block.selected .practice-grid').children].every(e=>!e.querySelector('.cell-character')&&getComputedStyle(e).backgroundImage.includes('linear-gradient'))"));
+  assert(await evaluate("[...document.querySelector('.block.selected .practice-grid').children].every(e=>!e.querySelector('.cell-character')&&e.querySelector('.grid-lines')&&getComputedStyle(e.querySelector('.grid-lines')).display!=='none')"));
   passed.push('選取不會填字、實際空白格計數、清空行保留米字格且沒有字圖');
   await evaluate("document.getElementById('headerOptions').open=true;document.getElementById('showName').click();document.getElementById('showClass').click();document.getElementById('showDate').click()");
   await input('#studentName','小朋友');await input('#className','三年級');await input('#practiceDate','2026/11/06');
@@ -308,6 +316,27 @@ try {
   assert(stepsFit);
   passed.push('64 畫分成 4 行與長頁標題不破壞分頁');
 
+  // Direct PDF uses the actual download button, without invoking print preview.
+  await evaluate("window.print=()=>{throw new Error('直接下載不可呼叫瀏覽器列印')}");
+  failPdfLibrary=true;
+  await click('#downloadPdf');
+  await waitFor(()=>evaluate("document.getElementById('toast').textContent.includes('PDF 元件載入失敗')&&!document.getElementById('downloadPdf').disabled"),'元件下載失敗後恢復按鈕');
+  assert.equal(await evaluate("document.querySelectorAll('iframe[title=\"PDF 匯出暫存\"]').length"),0);
+  passed.push('PDF 元件下載失敗有提示、清理快照，恢復按鈕後可直接重試');
+  const previewBeforeExport=await evaluate("document.querySelectorAll('.sheet').length");
+  const stateBeforeExport=await evaluate("localStorage.getItem('hanzi-worksheet-studio')");
+  await click('#downloadPdf');
+  const directFile=await waitFor(async ()=>(await readdir(output)).find(name=>name.startsWith('正體字帖_')&&name.endsWith('.pdf')),'直接下載多頁 PDF',90000);
+  const directBytes=await readFile(path.join(output,directFile));
+  assert.equal(directBytes.subarray(0,5).toString(),'%PDF-');
+  const directPages=[...directBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length;
+  assert.equal(directPages,previewBeforeExport,'直接 PDF 頁數必須與預覽一致');
+  assert.match(directBytes.toString('latin1'),/\/MediaBox \[0 0 595\.2[0-9]* 841\.8[0-9]*\]/);
+  await waitFor(()=>evaluate("!document.getElementById('downloadPdf').disabled"),'PDF 完成後按鈕恢復');
+  assert.equal(await evaluate("localStorage.getItem('hanzi-worksheet-studio')"),stateBeforeExport);
+  assert.equal(await evaluate("document.querySelectorAll('iframe[title=\"PDF 匯出暫存\"]').length"),0);
+  passed.push(`直接下載 ${directPages} 頁 A4 PDF，無列印視窗、不改動專案`);
+
   await cdp('Emulation.setEmulatedMedia',{media:'print'});
   const expectedPages=await evaluate("document.querySelectorAll('.sheet').length");
   await evaluate('Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))');
@@ -326,6 +355,29 @@ try {
   await evaluate('window.scrollTo(0,0)');
   const screenshot=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
   await writeFile(path.join(output,'stress.png'),Buffer.from(screenshot.data,'base64'));
+  creditsProject.blocks[0].count=6;
+  creditsProject.sourceText=creditsProject.appliedText='來源頁驗證';
+  await writeFile(creditsFile,JSON.stringify(creditsProject));await setFiles('#loadJson',[creditsFile]);
+  await waitFor(()=>evaluate("document.querySelectorAll('.credits-page').length===1"),'匯出前來源頁');
+  const beforeSourceDownload=new Set(await readdir(output));
+  await click('#downloadPdf');
+  const sourceDownload=await waitFor(async ()=>(await readdir(output)).find(name=>!beforeSourceDownload.has(name)&&name.endsWith('.pdf')),'直接 PDF 包含素材來源',60000);
+  const sourceBytes=await readFile(path.join(output,sourceDownload));
+  assert.equal([...sourceBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,2);
+  passed.push('含官方來源的字帖直接匯出 2 頁 PDF：1 頁字帖＋1 頁素材來源');
+  if(process.env.QA_PDF_PROJECT) {
+    await setFiles('#loadJson',[path.resolve(process.env.QA_PDF_PROJECT)]);
+    await waitFor(()=>evaluate("document.getElementById('toast').textContent.includes('已載入字帖專案')"),'真實字卡專案');
+    const expected=await evaluate("document.querySelectorAll('.sheet').length");
+    await evaluate('Promise.all([...document.images].map(i=>i.decode()))');
+    assert((await layout()).every(page=>page.fits&&page.scrollFits));
+    const before=new Set(await readdir(output));
+    await click('#downloadPdf');
+    const file=await waitFor(async ()=>(await readdir(output)).find(name=>!before.has(name)&&name.endsWith('.pdf')),'真實官方字卡直接 PDF',60000);
+    const bytes=await readFile(path.join(output,file));
+    assert.equal([...bytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,expected);
+    passed.push(`提供的真實字卡專案直接下載 ${expected} 頁 PDF，字格與來源完整`);
+  }
   assert.equal(exceptions.length,0,JSON.stringify(exceptions));
   const report={passed,exceptions,previewPages:expectedPages,pdfPages:actualPages,
     limits:['未自動驗證教育部遠端動畫的播放及音訊；測試只確認官方原始 iframe 位址及署名。'],output};

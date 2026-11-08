@@ -23,3 +23,7 @@ AGPL 是自由／開源軟體授權，允許商業利用，沒有附加「禁止
 舊私人示範 PDF、三字逐筆 PNG、個人範例 JSON、含這些素材的評審截圖及 PDF 未納入此公開倉庫，也未出現在公開 Git 歷史。原有私人版本另外保留。
 
 測試中的 SVG／PNG 圖形是合成測試資料，僅用於驗證容器解析、字格操作及排版，不代表真實字形或筆順。
+
+## PDF 匯出函式庫
+
+html2canvas 1.4.1 與 jsPDF 4.2.1 採 MIT 授權；原始版權與許可文本保留於 [src/vendor-licenses.md](src/vendor-licenses.md)，不受本專案 AGPL 授權重新授權。

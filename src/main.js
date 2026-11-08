@@ -9,6 +9,7 @@ import {paginate, moveBlockToPage, PAGE} from './pagination.js';
 import {officialEmbedUrl} from './moe.js';
 import {DocumentHistory} from './history.js';
 import {updateWorksheetText} from './text-update.js';
+import {downloadWorksheetPdf, waitForImages} from './pdf-export.js';
 
 // 編輯和排版都在本機執行；缺字由本機服務向教育部請求字卡。
 const $ = id => document.getElementById(id);
@@ -134,12 +135,15 @@ function neededCharacters() {
   return charactersInBlocks(blocks);
 }
 
+// Simple vector lines avoid expensive repeated gradient masks in print/PDF.
+const gridLines = '<svg class="grid-lines" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M50 0V100M0 50H100M0 0L100 100M100 0L0 100" fill="none" stroke="#f6ced0" stroke-width="1"/></svg>';
+
 function practiceHtml(block) {
   const blankStyle=$('blankStyle').value;
   const cells=cellsForRow(block);
   const cellHtml=cells.map((cell,index)=>{
     const blank=!cell.ch;
-    return `<div class="grid-bg ${blank&&blankStyle==='space'?'blank-space':''}" data-cell-block="${escapeHtml(block.id)}" data-cell-index="${index}" data-cell-state="${blank?'blank':'filled'}" draggable="${!blank}" title="第 ${index+1} 格：${escapeHtml(cell.ch||'空白')}">${glyphHtml(cell.ch,cell.opacity)}</div>`;
+    return `<div class="grid-bg ${blank&&blankStyle==='space'?'blank-space':''}" data-cell-block="${escapeHtml(block.id)}" data-cell-index="${index}" data-cell-state="${blank?'blank':'filled'}" draggable="${!blank}" title="第 ${index+1} 格：${escapeHtml(cell.ch||'空白')}">${gridLines}${glyphHtml(cell.ch,cell.opacity)}</div>`;
   }).join('');
   return `<div class="practice-line ${block.signature?'':'no-signature'}"><div class="practice-grid">${cellHtml}</div>${signatureHtml(block.signature)}</div>`;
 }
@@ -186,7 +190,7 @@ function renderBlock({block, height, stageCount}) {
     const stageHtml = steps?.length
       ? steps.map((uri, index) => {
         const safe = safeImageUrl(uri);
-        return `<div><div class="grid-bg stroke-mini">`+
+        return `<div><div class="grid-bg stroke-mini">${gridLines}`+
           `<img src="${escapeHtml(safe)}" alt="${escapeHtml(ch)}第${index+1}畫"></div>`+
           `<div class="stagecount">${index+1}</div></div>`;
       }).join('')
@@ -625,22 +629,41 @@ bind('loadJson','change',async event=> {
   event.target.value='';
 });
 bind('retryStrokes','click',()=>{strokeErrors.clear();renderSheet();});
-bind('printBtn','click',async()=>{
-  const button=$('printBtn');
-  const label=button.textContent;
-  button.disabled=true;button.textContent='正在準備筆順及圖片…';
+let exporting = false;
+async function exportWorksheet(kind) {
+  if (exporting) return;
+  exporting = true;
+  const button = $(kind === 'pdf' ? 'downloadPdf' : 'printBtn');
+  const label = button.textContent;
+  $('downloadPdf').disabled = $('printBtn').disabled = true;
+  button.textContent = '正在準備筆順及圖片…';
   try {
     await officialIndexReady;
-    if(!officialCharacters.size&&neededCharacters().some(ch=>!getStages(ch,customAssets)))throw new Error('官方字庫索引載入失敗，請重新整理後再列印。');
+    if(!officialCharacters.size&&neededCharacters().some(ch=>!getStages(ch,customAssets)))throw new Error('官方字庫索引載入失敗，請重新整理後再匯出。');
     ensureOfficialStrokes();
     while(strokeRequests.size)await Promise.all([...strokeRequests.values()]);
     const missing=neededCharacters().filter(ch=>officialCharacters.has(ch)&&!getStages(ch,customAssets));
     if(missing.length)throw new Error(`「${missing.join('、')}」筆順尚未載入，請先重試缺字筆順。`);
-    await Promise.all([...document.querySelectorAll('.sheet img')].map(image=>image.decode()));
-    window.print();
-  } catch(error){showToast(error.message);}
-  finally{button.disabled=false;button.textContent=label;}
-});
+    await waitForImages($('sheet'));
+    if (kind === 'pdf') {
+      const count = await downloadWorksheetPdf([...document.querySelectorAll('.sheet')],
+        `正體字帖_${appliedText.slice(0,24)||'練習'}.pdf`,
+        (page,total) => { button.textContent = `正在製作 PDF ${page} / ${total}…`; });
+      showToast(`已匯出 ${count} 頁 PDF`);
+    } else {
+      // Reset before opening the blocking system dialog.
+      button.textContent = label;
+      window.print();
+    }
+  } catch(error){showToast(`匯出失敗：${error.message}`);}
+  finally{
+    exporting = false;
+    $('downloadPdf').disabled = $('printBtn').disabled = false;
+    button.textContent = label;
+  }
+}
+bind('downloadPdf','click',()=>exportWorksheet('pdf'));
+bind('printBtn','click',()=>exportWorksheet('print'));
 bind('previousPage','click',()=>goToPage(activePage-1));
 bind('nextPage','click',()=>goToPage(activePage+1));
 bind('pageSelect','change',event=>goToPage(Number(event.target.value)));
@@ -698,7 +721,7 @@ try {
 history=new DocumentHistory(historyState());
 updateHistoryControls();updateTextStatus();
 
-const officialIndexReady=fetch('./assets/moe-index.json').then(response => {
+const officialIndexReady=fetch('./assets/moe-index.json',{signal:AbortSignal.timeout(20000)}).then(response => {
   if (!response.ok) throw new Error('索引讀取失敗');
   return response.json();
 }).then(index => {

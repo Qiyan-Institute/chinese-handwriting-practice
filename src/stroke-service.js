@@ -33,7 +33,7 @@ export function strokeApiUrl(ch,base=STROKE_API_BASE) {
 }
 
 export async function fetchOfficialStages(ch, fetcher=fetch) {
-  const response=await fetcher(strokeApiUrl(ch));
+  const response=await fetcher(strokeApiUrl(ch),{signal:AbortSignal.timeout(30000)});
   const result=await response.json();
   if(!response.ok)throw new Error(result.error||'教育部筆順下載失敗');
   if(result.character!==ch)throw new Error('官方字卡回傳的單字不符');
