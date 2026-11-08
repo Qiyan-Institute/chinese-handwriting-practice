@@ -1,5 +1,6 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
-// Raster A4 pages at 300 dpi, independently of the browser's print preview.
+// Raster selected paper at 300 dpi, independently of browser print preview.
+import {getPaperSize} from './paper.js';
 const libraries = new Map();
 
 function deadline(promise, milliseconds, message) {
@@ -59,6 +60,8 @@ function createSnapshot(sheets) {
 
 export async function downloadWorksheetPdf(sheets, filename, onProgress = () => {}) {
   if (!sheets.length) throw new Error('沒有可匯出的頁面');
+  const paper = getPaperSize(sheets[0].dataset.paperSize);
+  const format = [paper.widthMm, paper.heightMm];
   const snapshot = createSnapshot(sheets);
   try {
     const [render, Pdf] = await Promise.all([
@@ -67,7 +70,7 @@ export async function downloadWorksheetPdf(sheets, filename, onProgress = () => 
     ]);
     await deadline(snapshot.doc.fonts.ready, 20000, '字型載入逾時，請重試');
     await waitForImages(snapshot.doc);
-    const pdf = new Pdf({orientation:'portrait', unit:'mm', format:'a4', compress:true});
+    const pdf = new Pdf({orientation:'portrait', unit:'mm', format, compress:true});
     for (let index = 0; index < snapshot.pages.length; index++) {
       onProgress(index + 1, snapshot.pages.length);
       // Yield between pages so progress is visible; retain only one large canvas.
@@ -80,8 +83,8 @@ export async function downloadWorksheetPdf(sheets, filename, onProgress = () => 
         imageTimeout:20000,
       });
       try {
-        if (index) pdf.addPage('a4', 'portrait');
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, 210, 297);
+        if (index) pdf.addPage(format, 'portrait');
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, paper.widthMm, paper.heightMm);
       } finally { canvas.width = canvas.height = 0; }
     }
     const url = URL.createObjectURL(pdf.output('blob'));

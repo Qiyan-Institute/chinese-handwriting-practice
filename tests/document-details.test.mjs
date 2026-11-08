@@ -61,3 +61,12 @@ test('隱藏全部頁首會釋放實際排版空間，不留下固定抬頭空�
   assert.equal(paginate(rows).length,2);
   assert.equal(paginate(rows,()=>0,0).length,1);
 });
+
+test('紙張設定隨 JSON 往返，舊專案及未知值保留 A4',()=>{
+  const project=createProject('學習',[createPracticeRow('學習')]);
+  assert.equal(validateProject(project).paperSize,'a4');
+  assert.equal(validateProject({...project,paperSize:'unknown'}).paperSize,'a4');
+  const restored=validateProject(JSON.parse(JSON.stringify({...project,paperSize:'letter'})));
+  assert.equal(restored.paperSize,'letter');
+  assert.deepEqual(restored.blocks,validateProject(project).blocks);
+});

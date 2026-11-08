@@ -365,6 +365,51 @@ try {
   const sourceBytes=await readFile(path.join(output,sourceDownload));
   assert.equal([...sourceBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,2);
   passed.push('含官方來源的字帖直接匯出 2 頁 PDF：1 頁字帖＋1 頁素材來源');
+  // A boundary case that fits A4 but must paginate on the shorter Letter page.
+  const letterProject={...creditsProject,sourceText:'Letter驗證',appliedText:'Letter驗證',paperSize:'a4',
+    blocks:Array.from({length:17},(_,i)=>({id:`letter-row-${i}`,type:'practice',text:'李',count:i?0:6,light1:27,light2:16,signature:false}))};
+  const letterFixture=path.join(temporary,'letter-fixture.json');
+  await writeFile(letterFixture,JSON.stringify(letterProject));await setFiles('#loadJson',[letterFixture]);
+  await waitFor(()=>evaluate("document.getElementById('sourceText').value==='Letter驗證'"),'Letter 邊界專案');
+  assert.equal(await evaluate("document.querySelectorAll('.worksheet-page').length"),1);
+  const beforePaperChange=await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)");
+  await input('#paperSize','letter','change');
+  assert.equal(await evaluate("document.querySelectorAll('.worksheet-page').length"),2);
+  assert((await layout()).every(page=>page.fits&&page.scrollFits&&Math.abs(page.width-816)<1&&Math.abs(page.height-1056)<1));
+  assert.equal(await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)"),beforePaperChange);
+  await click('#undoBtn');
+  assert.equal(await evaluate("document.getElementById('paperSize').value"),'a4');
+  assert.equal(await evaluate("document.querySelectorAll('.worksheet-page').length"),1);
+  await click('#redoBtn');
+  assert.equal(await evaluate("document.getElementById('paperSize').value"),'letter');
+  passed.push('A4 切換 Letter 重新分頁、保留字格及來源，支援撤銷／重做');
+  await click('#downloadProject');
+  const letterJson=await waitFor(async ()=>(await readdir(output)).find(name=>name.includes('Letter驗證')&&name.endsWith('.json')),'Letter JSON 下載');
+  assert.equal(JSON.parse(await readFile(path.join(output,letterJson),'utf8')).paperSize,'letter');
+  await input('#paperSize','a4','change');
+  await setFiles('#loadJson',[path.join(output,letterJson)]);
+  await waitFor(()=>evaluate("document.getElementById('paperSize').value==='letter'"),'JSON 還原 Letter');
+  assert((await layout()).every(page=>page.fits&&page.scrollFits&&Math.abs(page.height-1056)<1));
+  passed.push('Letter 紙張隨 JSON 保存及載入，舊專案維持 A4');
+  const letterPages=await evaluate("document.querySelectorAll('.sheet').length");
+  const assertLetterPdf=bytes=>{
+    assert.equal([...bytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,letterPages);
+    const boxes=[...bytes.toString('latin1').matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)];
+    assert(boxes.length>0);
+    assert(boxes.every(box=>Math.abs(Number(box[1])-612)<0.05&&Math.abs(Number(box[2])-792)<0.05));
+  };
+  const letterNative=await cdp('Page.printToPDF',{printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false});
+  const letterNativeBytes=Buffer.from(letterNative.data,'base64');assertLetterPdf(letterNativeBytes);
+  await writeFile(path.join(output,'multi-page-letter-print.pdf'),letterNativeBytes);
+  const beforeLetterDownload=new Set(await readdir(output));
+  await click('#downloadPdf');
+  const letterDownload=await waitFor(async ()=>(await readdir(output)).find(name=>!beforeLetterDownload.has(name)&&name.endsWith('.pdf')),'Letter 直接 PDF',60000);
+  assertLetterPdf(await readFile(path.join(output,letterDownload)));
+  passed.push(`原生列印與直接下載均為 ${letterPages} 頁 Letter（612 × 792 pt），包含同尺寸來源頁`);
+  await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  assert((await layout()).every(page=>page.fits&&page.scrollFits&&Math.abs(page.width-816)<1));
+  await cdp('Emulation.setDeviceMetricsOverride',{width:1500,height:1000,deviceScaleFactor:1,mobile:false});
+  passed.push('Letter 在 390px 窄螢幕仍保留完整紙張幾何');
   if(process.env.QA_PDF_PROJECT) {
     await setFiles('#loadJson',[path.resolve(process.env.QA_PDF_PROJECT)]);
     await waitFor(()=>evaluate("document.getElementById('toast').textContent.includes('已載入字帖專案')"),'真實字卡專案');

@@ -6,6 +6,7 @@ import {
 } from './model.js';
 import {getStages, getGlyphUrl, safeImageUrl, importStrokeImages, officialLookupUrl, getAssetInfo, fetchOfficialStages} from './stroke-service.js';
 import {paginate, moveBlockToPage, PAGE} from './pagination.js';
+import {getPaperSize} from './paper.js';
 import {officialEmbedUrl} from './moe.js';
 import {DocumentHistory} from './history.js';
 import {updateWorksheetText} from './text-update.js';
@@ -50,7 +51,7 @@ function sourceText() {
 }
 
 function documentOptions() {
-  return documentSettings(Object.fromEntries(['pageTitle','pageLabel','studentName','className','practiceDate','blankStyle',
+  return documentSettings(Object.fromEntries(['paperSize','pageTitle','pageLabel','studentName','className','practiceDate','blankStyle',
     'showTitle','showName','showClass','showDate'].map(id=>[id,$(id).type==='checkbox'?$(id).checked:$(id).value])));
 }
 
@@ -214,21 +215,25 @@ function renderBlock({block, height, stageCount}) {
 
 function renderSheet() {
   const opts = documentOptions();
+  const paper = getPaperSize(opts.paperSize);
+  const paperAttributes = `data-paper-size="${paper.id}" style="--paper-width:${paper.widthMm}mm;--paper-height:${paper.heightMm}mm"`;
+  $('printPaperStyle').textContent = `@page{size:${paper.cssName};margin:0}`;
+  $('previewTitle').textContent = `多頁 ${paper.label} 預覽`;
   const meta=[opts.showName?`${escapeHtml(opts.pageLabel)}：${escapeHtml(opts.studentName)||'____________'}`:'',
     opts.showClass?`班級：${escapeHtml(opts.className)||'____________'}`:'',
     opts.showDate?`日期：${escapeHtml(opts.practiceDate)||'____________'}`:''].filter(Boolean);
   const hasTitle=opts.showTitle&&opts.pageTitle;
   const headerHeight=(hasTitle?71:0)+(meta.length?24:0);
   const header=headerHeight?`<div class="sheet-header" style="height:${headerHeight}px">${hasTitle?`<div class="sheet-title"><span>${escapeHtml(opts.pageTitle)}</span></div>`:''}${meta.length?`<div class="sheet-meta">${meta.map(text=>`<span>${text}</span>`).join('')}</div>`:''}</div>`:'';
-  pages = paginate(blocks, block => getStages(characters(block.text)[0], customAssets)?.length || 0,headerHeight);
+  pages = paginate(blocks, block => getStages(characters(block.text)[0], customAssets)?.length || 0,headerHeight,paper.id);
   const credits=officialCredits(blocks,assetMetadata);
   previewPageCount=pages.length+(credits.length?1:0);
   activePage = Math.min(activePage, previewPageCount - 1);
   $('sheet').innerHTML = pages.map((page, index) => {
     const footer = `<div class="sheet-footer"><span>第 ${index + 1} / ${pages.length} 頁</span></div>`;
-    return `<article class="sheet worksheet-page" id="page-${index + 1}" data-page="${index}" aria-label="第 ${index + 1} 頁">${header}`+
+    return `<article class="sheet worksheet-page" ${paperAttributes} id="page-${index + 1}" data-page="${index}" aria-label="第 ${index + 1} 頁">${header}`+
       `<div class="sheet-body">${page.entries.map(renderBlock).join('')}</div>${footer}</article>`;
-  }).join('')+(credits.length?`<article class="sheet credits-page" id="page-${previewPageCount}" aria-label="素材來源"><div class="source-body"><h2>素材來源</h2><p>本文件使用 ${credits.length} 個字的官方累積逐筆字卡。</p><dl><dt>著作權人</dt><dd>中華民國教育部</dd><dt>來源</dt><dd>國字標準字體筆順學習網<br><a href="https://stroke-order.learningweb.moe.edu.tw/">https://stroke-order.learningweb.moe.edu.tw/</a></dd><dt>授權</dt><dd>創用 CC 姓名標示－非商業性－禁止改作 3.0 臺灣版<br><a href="https://creativecommons.org/licenses/by-nc-nd/3.0/tw/">https://creativecommons.org/licenses/by-nc-nd/3.0/tw/</a></dd></dl><p>字卡保留官方原始 SVG 檔案內容。</p></div></article>`:'');
+  }).join('')+(credits.length?`<article class="sheet credits-page" ${paperAttributes} id="page-${previewPageCount}" aria-label="素材來源"><div class="source-body"><h2>素材來源</h2><p>本文件使用 ${credits.length} 個字的官方累積逐筆字卡。</p><dl><dt>著作權人</dt><dd>中華民國教育部</dd><dt>來源</dt><dd>國字標準字體筆順學習網<br><a href="https://stroke-order.learningweb.moe.edu.tw/">https://stroke-order.learningweb.moe.edu.tw/</a></dd><dt>授權</dt><dd>創用 CC 姓名標示－非商業性－禁止改作 3.0 臺灣版<br><a href="https://creativecommons.org/licenses/by-nc-nd/3.0/tw/">https://creativecommons.org/licenses/by-nc-nd/3.0/tw/</a></dd></dl><p>字卡保留官方原始 SVG 檔案內容。</p></div></article>`:'');
   $('pageStatus').textContent = `${pages.length} 頁練習${credits.length?' ＋ 1 頁素材來源':''} · 12 格 / 行`;
   $('pageSelect').innerHTML = Array.from({length:previewPageCount},(_, i) => `<option value="${i}" ${i === activePage ? 'selected' : ''}>${i<pages.length?`第 ${i + 1} 頁`:'素材來源'}</option>`).join('');
   if ($('moveToPage')) {
@@ -468,7 +473,7 @@ document.addEventListener('keydown',event=>{
     event.preventDefault();restoreHistory(key==='y'||event.shiftKey?'redo':'undo');
   }
 });
-for(const id of ['showTitle','showName','showClass','showDate','blankStyle']) bind(id,'change',()=>{renderSheet();saveLocal();});
+for(const id of ['paperSize','showTitle','showName','showClass','showDate','blankStyle']) bind(id,'change',()=>{renderSheet();saveLocal();});
 bind('allSignatures','change',event=>{for(const block of blocks)if(block.type!=='heading')block.signature=event.target.checked;saveLocal();render();});
 bind('cleanLayout','click',()=>{
   for(const id of ['showName','showClass','showDate'])$(id).checked=false;

@@ -53,3 +53,26 @@ test('生字範本不再悄悄截斷輸入，超額時明確拒絕', () => {
   assert.equal(createTemplate('word',text).filter(block => block.type === 'character').length, Array.from(text).length);
   assert.throws(() => createTemplate('v2', '學'.repeat(241)), /240/);
 });
+
+test('Letter 頁面較矮，17 行會由一張 A4 分成兩頁且保留全部字格',()=>{
+  const rows=Array.from({length:17},()=>createPracticeRow('學習',6));
+  assert.equal(paginate(rows).length,1);
+  const letter=paginate(rows,()=>0,98,'letter');
+  assert.equal(letter.length,2);
+  assert.equal(letter[0].entries.length,16);
+  assert.deepEqual(letter.flatMap(page=>page.entries.map(entry=>entry.block)),rows);
+});
+
+test('Letter 長文件與 64 畫單字遵守高度、手動分頁和標題連同下行',()=>{
+  const blocks=Array.from({length:50},()=>createCharacterBlock('龘'));
+  blocks[2].pageBreakBefore=true;
+  const heading=createHeading('下一組');
+  blocks.splice(10,0,heading);
+  const pages=paginate(blocks,()=>64,98,'letter');
+  assert(pages.every(page=>page.used<=880));
+  assert.deepEqual(pages.flatMap(page=>page.entries.map(entry=>entry.block.id)),blocks.map(block=>block.id));
+  assert.equal(pages[1].entries[0].block.id,blocks[2].id);
+  const group=pages.find(page=>page.entries.some(entry=>entry.block.id===heading.id));
+  const at=group.entries.findIndex(entry=>entry.block.id===heading.id);
+  assert.equal(group.entries[at+1].block.id,blocks[11].id);
+});

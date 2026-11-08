@@ -1,7 +1,8 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
-// A4 at CSS's 96 px/in. The matching fixed dimensions live in styles.css.
+import {getPaperSize} from './paper.js';
+// Keep A4 defaults for existing callers; selected paper controls the page height.
 export const PAGE = Object.freeze({
-  width: 210 * 96 / 25.4, height: 297 * 96 / 25.4,
+  width:getPaperSize('a4').width, height:getPaperSize('a4').height,
   paddingTop: 23, paddingBottom: 19, header: 98, headerGap: 8, footer: 28,
   practice: 54, heading: 40, characterBase: 86, strokeRow: 48, strokesPerRow: 16,
 });
@@ -14,8 +15,9 @@ export function blockHeight(block, stageCount = 0) {
   throw new Error(`無法排版的區塊：${block.type}`);
 }
 
-export function paginate(blocks, getStageCount = () => 0, headerHeight = PAGE.header) {
-  const available=PAGE.height-PAGE.paddingTop-PAGE.paddingBottom-headerHeight-(headerHeight?PAGE.headerGap:0)-PAGE.footer;
+export function paginate(blocks, getStageCount = () => 0, headerHeight = PAGE.header, paperSize = 'a4') {
+  const paper=getPaperSize(paperSize);
+  const available=paper.height-PAGE.paddingTop-PAGE.paddingBottom-headerHeight-(headerHeight?PAGE.headerGap:0)-PAGE.footer;
   const pages = [];
   let page = { entries: [], used: 0 };
   const flush = () => { if (page.entries.length) pages.push(page); page = { entries: [], used: 0 }; };
@@ -23,7 +25,7 @@ export function paginate(blocks, getStageCount = () => 0, headerHeight = PAGE.he
     const block = blocks[index];
     const count = getStageCount(block);
     const height = blockHeight(block, count);
-    if (height > available) throw new Error('單一區塊超過 A4 可用高度');
+    if (height > available) throw new Error(`單一區塊超過 ${paper.label} 可用高度`);
     // Keep a heading with its following block whenever that pair fits on a page.
     const next = blocks[index + 1];
     const pair = block.type === 'heading' && next && !next.pageBreakBefore

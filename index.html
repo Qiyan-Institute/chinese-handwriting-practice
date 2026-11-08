@@ -4,12 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>正體字帖工坊｜繁體字描紅與筆順練習</title>
-<meta name="description" content="免費開源的繁體字描紅、標準筆順與多頁 A4 字帖工具，預設孫中山練習範例。">
-<link rel="stylesheet" href="./src/styles.css?v=0.5.2">
+<meta name="description" content="免費開源的繁體字描紅、標準筆順與多頁 A4／US Letter 字帖工具，預設孫中山練習範例。">
+<link rel="stylesheet" href="./src/styles.css?v=0.5.3">
+<style id="printPaperStyle">@page{size:A4;margin:0}</style>
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><div class="brand-mark">字</div><div><strong>正體字帖工坊</strong><span>繁體字描紅 · 標準筆順 · A4 練習字帖</span></div></div>
+  <div class="brand"><div class="brand-mark">字</div><div><strong>正體字帖工坊</strong><span>繁體字描紅 · 標準筆順 · A4／Letter 練習字帖</span></div></div>
   <div class="top-actions"><button id="undoBtn" disabled title="撤銷（在編輯區按 ⌘/Ctrl+Z）">↶ 撤銷</button><button id="redoBtn" disabled title="重做（⌘/Ctrl+Shift+Z 或 Ctrl+Y）">↷ 重做</button><button id="downloadProject">儲存專案</button><button id="loadBtn">開啟專案</button><button id="printBtn">列印</button><button id="downloadPdf" class="primary">下載 PDF</button><input type="file" id="loadJson" accept=".json,application/json" hidden></div>
 </header>
 <div class="tool-layout">
@@ -18,6 +19,7 @@
       <textarea class="field-input" id="sourceText" rows="2" maxlength="500" aria-label="字帖練習文字" placeholder="例如：孫中山、春眠不覺曉、海闊天空">孫中山</textarea>
       <button id="applyText" class="primary" style="width:100%;margin-top:8px" disabled>更新現有字帖文字</button>
       <div id="textUpdateStatus" class="legend" role="status"></div>
+      <label class="field" for="paperSize">紙張大小</label><select class="field-input" id="paperSize"><option value="a4">A4（210 × 297 mm）</option><option value="letter">US Letter（8.5 × 11 吋）</option></select>
       <label class="field" for="pageTitle">頁面標題</label><input class="field-input" id="pageTitle" maxlength="120" value="正體字書寫練習">
       <label class="switch"><span>顯示頁面標題</span><input id="showTitle" type="checkbox" checked></label>
       <details id="headerOptions" class="options-details"><summary>可選抬頭與簽核</summary>
@@ -62,7 +64,7 @@
     </div>
     <div class="section-ui"><div class="smallcap">開源與素材</div><p>程式碼採 AGPL-3.0 授權，可依法商用。官方字形與筆順素材獨立適用非商業授權，不包含在程式碼授權內。</p><a class="official-link" href="https://github.com/Qiyan-Institute/chinese-handwriting-practice" target="_blank" rel="noopener noreferrer">查看源碼與使用說明 ↗</a></div>
   </aside>
-  <main class="workspace"><div class="workspace-head"><div><b>多頁 A4 預覽</b><br><small>點選區塊編輯 · 拖拽可跨頁調整順序</small></div><div><small id="pageStatus"></small></div></div><div class="editor-controls"><label for="cellMode">字格操作</label><select id="cellMode"><option value="select">選取區塊</option><option value="fill">填入選中字</option><option value="erase">清空字格</option></select><nav class="page-navigation" aria-label="字帖頁面"><button id="previousPage" aria-label="上一頁">←</button><select id="pageSelect" aria-label="前往頁面"></select><button id="nextPage" aria-label="下一頁">→</button></nav></div><div id="sheet" class="sheets"></div></main>
+  <main class="workspace"><div class="workspace-head"><div><b id="previewTitle">多頁 A4 預覽</b><br><small>點選區塊編輯 · 拖拽可跨頁調整順序</small></div><div><small id="pageStatus"></small></div></div><div class="editor-controls"><label for="cellMode">字格操作</label><select id="cellMode"><option value="select">選取區塊</option><option value="fill">填入選中字</option><option value="erase">清空字格</option></select><nav class="page-navigation" aria-label="字帖頁面"><button id="previousPage" aria-label="上一頁">←</button><select id="pageSelect" aria-label="前往頁面"></select><button id="nextPage" aria-label="下一頁">→</button></nav></div><div id="sheet" class="sheets"></div></main>
   <aside class="panel right"><div class="smallcap">屬性檢查器</div><h2 style="margin-top:7px">選中區塊的設定</h2><div id="inspector"></div></aside>
 </div>
 <div id="toast" class="toast" role="status"></div>
@@ -72,6 +74,6 @@
   <p>中華民國教育部 · <a href="https://stroke-order.learningweb.moe.edu.tw/" target="_blank" rel="noopener noreferrer">國字標準字體筆順學習網</a><br><a href="https://stroke-order.learningweb.moe.edu.tw/page.jsp?ID=52" target="_blank" rel="noopener noreferrer">CC BY-NC-ND 3.0 臺灣版／官方版權說明</a></p>
   <p>需要網路；若動畫未顯示，可關閉視窗後使用官網查詢連結。</p>
 </dialog>
-<script type="module" src="./src/main.js?v=0.5.2"></script>
+<script type="module" src="./src/main.js?v=0.5.3"></script>
 
 </body></html>
