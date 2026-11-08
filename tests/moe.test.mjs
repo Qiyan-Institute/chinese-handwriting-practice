@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {parseOfficialIndex, officialEmbedUrl} from '../src/moe.js';
-import {officialLookupUrl, getAssetInfo, safeImageUrl} from '../src/stroke-service.js';
+import {officialLookupUrl, getAssetInfo, safeImageUrl, strokeApiUrl} from '../src/stroke-service.js';
 import {createProject, validateProject, createPracticeRow} from '../src/model.js';
 
 test('官方 6063 字索引可查標準動畫；未知字不編造網址', async () => {
@@ -43,4 +43,10 @@ test('拒絕危險圖片網址並修復重複區塊 ID', () => {
   const project = validateProject(createProject('學', [block, {...block}]));
   assert.notEqual(project.blocks[0].id,project.blocks[1].id);
   assert.throws(() => validateProject({blocks:[],customAssets:{'學':[]}}));
+});
+
+test('筆順地址支援 Pages 後端及原有同源模式，單字有正確編碼',()=>{
+  assert.equal(strokeApiUrl('孫',''),'/api/moe/strokes?character=%E5%AD%AB');
+  assert.equal(strokeApiUrl('孫','https://api.example.test/'),'https://api.example.test/api/moe/strokes?character=%E5%AD%AB');
+  assert.throws(()=>strokeApiUrl('孫中山',''));
 });

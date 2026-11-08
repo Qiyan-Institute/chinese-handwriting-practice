@@ -88,3 +88,18 @@ test('公開接口有暫存節流，解壓縮有串流大小界線',async()=>{
   time=61000;assert.equal((await app.fetch(request('/api/moe/strokes?character=學'))).status,200);
   await assert.rejects(readBounded(new Blob([new Uint8Array(1024)]).stream(),100),/大小限制/);
 });
+
+test('GitHub Pages 僅獲指定 origin 的 CORS，成功、缺字及預檢皆可辨識',async()=>{
+  const origin='https://qiyan-institute.github.io';
+  const app=createHostedApp(assets,{fetcher:async()=>new Response(fixture())});
+  const options={headers:{Origin:origin}};
+  const success=await app.fetch(request('/api/moe/strokes?character=學',options));
+  assert.equal(success.status,200);assert.equal(success.headers.get('Access-Control-Allow-Origin'),origin);
+  assert.equal(success.headers.get('Vary'),'Origin');
+  const missing=await app.fetch(request('/api/moe/strokes?character=🙂',options));
+  assert.equal(missing.status,404);assert.equal(missing.headers.get('Access-Control-Allow-Origin'),origin);
+  const preflight=await app.fetch(request('/api/moe/strokes',{...options,method:'OPTIONS'}));
+  assert.equal(preflight.status,204);assert.match(preflight.headers.get('Access-Control-Allow-Methods'),/GET/);
+  const denied=await app.fetch(request('/api/moe/strokes',{method:'OPTIONS',headers:{Origin:'https://example.com'}}));
+  assert.equal(denied.status,403);assert.equal(denied.headers.get('Access-Control-Allow-Origin'),null);
+});

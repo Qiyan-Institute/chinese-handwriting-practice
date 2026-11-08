@@ -2,11 +2,11 @@
 
 免費、開源、可在自己電腦使用的繁體字練習工具。支援任意文字、第一版全描紅／第二版半描紅、每行 12 格、字格及區塊拖放、灰度、家長簽核、JSON 存取、多頁 A4 編輯及瀏覽器列印。
 
-**MVP 0.5.0 線上版**：新增最近 50 步撤銷／重做，以及草稿文字與套用到字帖的明確流程。整理乾淨版面、獨立素材來源頁、可選抬頭與簽核、精確空白格計數及選取／填字／清空工具。缺字會自動下載官方原始累積 SVG 字卡，接入「楷體逐筆」、描紅格及列印。保留 6,063 字官方索引、動畫視窗、多頁編輯及來源紀錄。程式碼採 **AGPL-3.0-only** 授權，允許依法商用；第三方字形及筆順素材另依其原始授權。公開倉庫不附私人 PDF、筆順圖或個人字帖範例。
+**MVP 0.5.1 GitHub Pages 版**：新增最近 50 步撤銷／重做，以及草稿文字與套用到字帖的明確流程。整理乾淨版面、獨立素材來源頁、可選抬頭與簽核、精確空白格計數及選取／填字／清空工具。缺字會自動下載官方原始累積 SVG 字卡，接入「楷體逐筆」、描紅格及列印。保留 6,063 字官方索引、動畫視窗、多頁編輯及來源紀錄。程式碼採 **AGPL-3.0-only** 授權，允許依法商用；第三方字形及筆順素材另依其原始授權。公開倉庫不附私人 PDF、筆順圖或個人字帖範例。
 
 ## 線上使用
 
-[開啟正體字帖工坊](https://qiyan-chinese-handwriting.bountifulhome1.chatgpt.site) — 公開網址，不需安裝 Node。預設範例是「孫中山」。編輯、JSON 與列印在瀏覽器執行；逐筆由同站接口按需取得。沒有帳戶或專案雲端儲存，檔案仍由使用者自行下載保存。
+[開啟正體字帖工坊](https://qiyan-institute.github.io/chinese-handwriting-practice/) — 公開網址，不需安裝 Node。預設範例是「孫中山」。編輯、JSON 與列印在瀏覽器執行；前端由 GitHub Pages 託管，逐筆由獨立後端按需取得。沒有帳戶或專案雲端儲存，檔案仍由使用者自行下載保存。
 
 ## 本機啟動
 
@@ -42,7 +42,7 @@ JSON 只含編排，不內嵌第三方字圖。開啟後會按需載入官方筆
 npm test
 ```
 
-共 41 項，涵蓋原有排版、分頁、官方索引、字卡 ZIP 解析／校驗、SVG 原始 bytes、下載去重／快取／重試和來源存取。
+共 43 項，涵蓋原有排版、分頁、官方索引、字卡 ZIP 解析／校驗、SVG 原始 bytes、下載去重／快取／重試和來源存取。
 
 瀏覽器整合驗證需 Node.js 22 以上及本機 Chrome，不會使用日常瀏覽器的設定或資料。預設使用明確標記的合成圖片驗證排版，不依賴私人字卡；真實官方下載可另行開啟：
 
@@ -95,3 +95,13 @@ node scripts/update-moe-index.mjs --input /path/to/官方清單.csv
 線上 `/api/moe/strokes` 使用 Web Fetch／Compression Streams，與本機 Node 解碼結果逐 bytes 比對。僅允許查詢官方索引內單字，設並行限制、短期記憶體快取與暫存節流，不是任意網址代理。`/api/health` 供部署驗證。
 
 本機驗證雲端構建：`npm run build:hosted` 後執行 `QA_HOSTED=1 npm run test:browser`。一般瀏覽器測試使用明確標記的合成圖片；真實雲端下載在發布後另行核對。
+
+## GitHub Pages 發布
+
+主要入口：https://qiyan-institute.github.io/chinese-handwriting-practice/
+
+每次 main 推送，`.github/workflows/pages.yml` 會執行自動測試、`npm run build:pages`，並透過 GitHub 官方 Pages Actions 部署 `dist/pages`。只發布前端必要檔案，支援專案子路徑；不把 Node 服務、Git、設定憑證或完整工作區當成靜態網站上傳。
+
+Pages 不能執行這個筆順服務，因此建置時會產生 `src/runtime-config.js`，明確指定現有的 HTTPS 後端。後端只對 `https://qiyan-institute.github.io` 回傳 CORS 許可，保留單字驗證、節流、固定官方來源及無專案上傳的設計。下載失敗可在原介面重試，既有手動素材仍優先。
+
+本機及全站 Worker 使用同源接口，沒有改成把所有使用者都強制導向外部接口。若自行架設其他 Pages 或後端，可在建置時設定 `STROKE_API_BASE`，並同步調整後端 origin 白名單。

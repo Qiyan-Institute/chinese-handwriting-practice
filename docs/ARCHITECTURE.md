@@ -66,3 +66,11 @@
 `.openai/hosting.json` 保存 Sites project_id，並使用相同源碼構建／版本封裝完成發布。GitHub 源碼與 Sites 託管源碼均保留 AGPL-3.0 授權。
 
 雲端 Fetch 使用 `redirect: manual` 並明確拒絕非成功狀態，不依賴邊緣執行環境不支援的 `redirect: error`；保留 globalThis 接收者以相容 Web API。相關行為在 hosted-worker 測試中檢查。
+
+## 0.5.1 GitHub Pages 主要入口
+
+Pages build 複製必要靜態檔案到 dist/pages，將 runtime-config.js 替換成後端 origin；其餘前端引用維持相對路徑，確保 /chinese-handwriting-practice/ 子路徑可用。一般 Node 與完整 Worker 構建的設定仍是同源。
+
+Worker 僅對指定 GitHub Pages origin 增加 Access-Control-Allow-Origin，Vary: Origin；包含成功、缺字、節流及錯誤回應。OPTIONS 有獨立預檢處理，不開放任意 origin 或 credentials。前端不加認證憑證，也不將專案上傳至後端。
+
+GitHub Actions 工作流以最小 contents:read 進行建置，部署工作另外使用 pages:write 及 id-token:write；main 更新即自動發布，不需要把網站複本人工推到 gh-pages 分支。

@@ -4,6 +4,7 @@ import {parseHostedStrokeArchive,readBounded} from './stroke-archive.js';
 export function createHostedApp(assets,{fetcher=(input,init)=>globalThis.fetch(input,init),now=()=>Date.now()}={}) {
   const index=JSON.parse(assets['/assets/moe-index.json'].body);
   const supported=new Set(index.characters),pending=new Map(),cache=new Map(),visitors=new Map();
+  const allowedOrigins=new Set(['https://qiyan-institute.github.io']);
   const headers={'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'};
   const json=(data,status=200,extra={})=>new Response(JSON.stringify(data),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...extra}});
   async function loadCard(ch) {
@@ -30,30 +31,36 @@ export function createHostedApp(assets,{fetcher=(input,init)=>globalThis.fetch(i
     try{return await request;}finally{pending.delete(ch);}
   }
   return {async fetch(request) {
-    if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{...headers,Allow:'GET, HEAD'}});
     const url=new URL(request.url);
-    if(url.pathname==='/api/health')return json({ok:true,service:'chinese-handwriting-practice',version:'0.5.0'});
+    const origin=request.headers.get('Origin');
+    const cors=origin&&allowedOrigins.has(origin)?{'Access-Control-Allow-Origin':origin,Vary:'Origin'}:{};
+    if(request.method==='OPTIONS'&&url.pathname==='/api/moe/strokes') {
+      if(!origin||(!allowedOrigins.has(origin)&&origin!==url.origin))return new Response(null,{status:403,headers});
+      return new Response(null,{status:204,headers:{...headers,...cors,'Access-Control-Allow-Methods':'GET, HEAD, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'}});
+    }
+    if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{...headers,Allow:'GET, HEAD'}});
+    if(url.pathname==='/api/health')return json({ok:true,service:'chinese-handwriting-practice',version:'0.5.1'});
     if(url.pathname==='/api/moe/strokes') {
+      const reply=(data,status=200,extra={})=>json(data,status,{...cors,...extra});
       // Only a single character from the official index can reach the fixed
       // upstream. This is not an arbitrary URL proxy or a document upload API.
       const ch=url.searchParams.get('character');
-      if(Array.from(ch||'').length!==1||!supported.has(ch))return json({error:'官方清單未收錄這個字'},404);
-      if(request.method==='HEAD')return new Response(null,{status:200,headers});
-      const origin=request.headers.get('Origin');
-      if(origin&&origin!==url.origin)return json({error:'請從字帖頁面載入筆順'},403);
+      if(origin&&origin!==url.origin&&!allowedOrigins.has(origin))return reply({error:'請從字帖頁面載入筆順'},403);
+      if(Array.from(ch||'').length!==1||!supported.has(ch))return reply({error:'官方清單未收錄這個字'},404);
+      if(request.method==='HEAD')return new Response(null,{status:200,headers:{...headers,...cors}});
       // Ephemeral per-instance admission control; no visitor address is logged
       // or stored in a database. Upstream concurrency has its own global cap.
       const key=request.headers.get('CF-Connecting-IP')||'anonymous';
       const current=now(),visitor=visitors.get(key);
       if(visitor&&visitor.until>current) {
-        if(visitor.count>=120)return json({error:'請求較多，請稍候再試'},429,{'Retry-After':'60'});
+        if(visitor.count>=120)return reply({error:'請求較多，請稍候再試'},429,{'Retry-After':'60'});
         visitor.count++;
       } else {
         if(visitors.size>=1000)visitors.delete(visitors.keys().next().value);
         visitors.set(key,{count:1,until:current+60000});
       }
-      try{return json(await loadCard(ch));}
-      catch(error){console.error('Official stroke download failed',{name:error.name,message:error.message});return json({error:error.status?error.message:'官方字卡暫時無法載入，請按「重試缺字筆順」。'},error.status||502);}
+      try{return reply(await loadCard(ch));}
+      catch(error){console.error('Official stroke download failed',{name:error.name,message:error.message});return reply({error:error.status?error.message:'官方字卡暫時無法載入，請按「重試缺字筆順」。'},error.status||502);}
     }
     let pathname;
     try{pathname=decodeURIComponent(url.pathname);}catch{return new Response('Bad path',{status:400,headers});}

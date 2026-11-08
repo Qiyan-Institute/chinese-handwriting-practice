@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import { BUILTIN_STROKES } from './builtin-strokes.js';
 import { characters, validateProject } from './model.js';
+import { STROKE_API_BASE } from './runtime-config.js';
 
 /**
  * 只提供已取得來源的筆順圖；缺字時絕不自己猜一筆。
@@ -26,9 +27,13 @@ export function officialLookupUrl(ch) {
   return `https://stroke-order.learningweb.moe.edu.tw/searchW.jsp?WORD=${encodeURIComponent(ch)}`;
 }
 
-export async function fetchOfficialStages(ch, fetcher=fetch) {
+export function strokeApiUrl(ch,base=STROKE_API_BASE) {
   if(characters(ch).length!==1)throw new Error('請輸入單一漢字');
-  const response=await fetcher(`/api/moe/strokes?character=${encodeURIComponent(ch)}`);
+  return `${base.replace(/\/$/,'')}/api/moe/strokes?character=${encodeURIComponent(ch)}`;
+}
+
+export async function fetchOfficialStages(ch, fetcher=fetch) {
+  const response=await fetcher(strokeApiUrl(ch));
   const result=await response.json();
   if(!response.ok)throw new Error(result.error||'教育部筆順下載失敗');
   if(result.character!==ch)throw new Error('官方字卡回傳的單字不符');
