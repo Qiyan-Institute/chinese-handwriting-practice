@@ -1,0 +1,32 @@
+{
+  "format": "hanzi-worksheet-studio-v2",
+  "updatedAt": "2026-11-08T10:05:51.556Z",
+  "sourceText": "ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦㄧㄨㄩ",
+  "blocks": [
+    {
+      "id": "0982c419-5257-47b9-acf7-02681ff1856b",
+      "type": "symbol-grid",
+      "text": "ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦㄧㄨㄩ",
+      "count": 37,
+      "light1": 32,
+      "light2": 32,
+      "signature": false,
+      "label": "",
+      "manual": null
+    }
+  ],
+  "customAssets": {},
+  "assetMetadata": {},
+  "paperSize": "letter",
+  "gridSize": "medium",
+  "pageTitle": "注音全描紅（37音）",
+  "showTitle": true,
+  "showName": false,
+  "showClass": false,
+  "showDate": false,
+  "pageLabel": "姓名",
+  "studentName": "",
+  "className": "",
+  "practiceDate": "",
+  "blankStyle": "grid"
+}

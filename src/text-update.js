@@ -1,5 +1,6 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
-import {characters,createCharacterBlock,newId} from './model.js';
+import {MAX_SYMBOL_CELLS} from './grid-style.js?v=0.6.1';
+import {characters,createCharacterBlock,newId} from './model.js?v=0.6.1';
 
 export function updateWorksheetText(blocks,previousText,nextText) {
   const previous=characters(previousText).join('');
@@ -17,7 +18,8 @@ export function updateWorksheetText(blocks,previousText,nextText) {
     const characterIndex=positions.length?positions[occurrence%positions.length]:-1;
     if(positions.length)occurrences.set(ch,occurrence+1);
     if(block.manual) {result.push(block);preservedManual++;continue;}
-    if(block.type==='practice'&&characters(block.text).join('')===previous) {
+    if(['practice','symbol-grid'].includes(block.type)&&characters(block.text).join('')===previous) {
+      if(block.type==='symbol-grid'&&newChars.length>MAX_SYMBOL_CELLS)throw new Error('單張符號表最多 48 個符號，請拆成多個區塊');
       result.push({...block,text:next});updated++;continue;
     }
     if(block.type==='heading'&&block.text===`連寫練習（${previous}）`) {

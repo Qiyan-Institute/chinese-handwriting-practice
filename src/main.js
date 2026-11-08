@@ -1,17 +1,17 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import {
-  MAX_CELLS_PER_GROUP, DEFAULT_TEXT, characters, newId, clamp,
+  DEFAULT_TEXT, characters, newId, clamp,
   createPracticeRow, createCharacterBlock, createHeading, createTemplate,
-  cellsForRow, cellCounts, charactersInBlocks, officialCredits, documentSettings, createProject, validateProject,
-} from './model.js?v=0.6.0';
+  gridForBlock, cellsForRow, cellCounts, charactersInBlocks, officialCredits, documentSettings, createProject, validateProject,
+} from './model.js?v=0.6.1';
 import {getStages, getGlyphUrl, safeImageUrl, importStrokeImages, officialLookupUrl, getAssetInfo, fetchOfficialStages} from './stroke-service.js?v=0.6.0';
-import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.5.6';
+import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.6.1';
 import {getPaperSize} from './paper.js';
-import {getGridStyle} from './grid-style.js?v=0.5.6';
+import {getGridStyle} from './grid-style.js?v=0.6.1';
 import {officialEmbedUrl} from './moe.js?v=0.6.0';
 import {PHONETIC_SYMBOLS,PHONETIC_TEXT,isPhoneticSymbol} from './phonetic.js?v=0.6.0';
 import {DocumentHistory} from './history.js';
-import {updateWorksheetText} from './text-update.js';
+import {updateWorksheetText} from './text-update.js?v=0.6.1';
 import {downloadWorksheetPdf, waitForImages} from './pdf-export.js?v=0.5.6';
 
 // 編輯和排版都在本機執行；缺字由本機服務向教育部請求字卡。
@@ -111,16 +111,17 @@ function updateTextStatus() {
 }
 
 function applyTemplate(kind) {
-  const text=kind==='phonetic'?PHONETIC_TEXT:characters($('sourceText').value).join('');
+  const phoneticTemplate=['phonetic','phonetic-tracing'].includes(kind);
+  const text=phoneticTemplate?PHONETIC_TEXT:characters($('sourceText').value).join('');
   if(!text){showToast('請先輸入練習文字');return;}
   try { blocks = createTemplate(kind, text, documentOptions().gridSize);appliedText=text; }
   catch(error) { showToast(error.message); return; }
-  if(kind==='phonetic') {
+  if(phoneticTemplate) {
     $('sourceText').value=text;
-    $('pageTitle').value='注音符號書寫練習';
+    $('pageTitle').value=kind==='phonetic-tracing'?'注音全描紅（37音）':'注音符號書寫練習';
     activePage=0;
   }
-  selectedId = blocks.find(block => block.type === 'practice'||(kind==='phonetic'&&block.type==='character'))?.id || blocks[0]?.id || null;
+  selectedId = blocks.find(block => block.type === 'practice'||block.type==='symbol-grid'||(kind==='phonetic'&&block.type==='character'))?.id || blocks[0]?.id || null;
   saveLocal();
   render();
 }
@@ -148,12 +149,14 @@ const gridLines = '<svg class="grid-lines" xmlns="http://www.w3.org/2000/svg" vi
 
 function practiceHtml(block) {
   const blankStyle=$('blankStyle').value;
-  const cells=cellsForRow(block,documentOptions().gridSize);
+  const gridSize=documentOptions().gridSize;
+  const grid=gridForBlock(block,gridSize);
+  const cells=cellsForRow(block,gridSize);
   const cellHtml=cells.map((cell,index)=>{
     const blank=!cell.ch;
     return `<div class="grid-bg ${blank&&blankStyle==='space'?'blank-space':''}" data-cell-block="${escapeHtml(block.id)}" data-cell-index="${index}" data-cell-state="${blank?'blank':'filled'}" draggable="${!blank}" title="第 ${index+1} 格：${escapeHtml(cell.ch||'空白')}">${gridLines}${glyphHtml(cell.ch,cell.opacity)}</div>`;
   }).join('');
-  return `<div class="practice-line ${block.signature?'':'no-signature'}"><div class="practice-grid">${cellHtml}</div>${signatureHtml(block.signature)}</div>`;
+  return `<div style="--grid-height:${grid.gridHeight}px;--practice-line-height:${grid.lineHeight}px" class="practice-line ${block.signature?'':'no-signature'}"><div class="practice-grid">${cellHtml}</div>${signatureHtml(block.signature)}</div>`;
 }
 
 function hasOfficialStroke(ch) {
@@ -214,7 +217,7 @@ function renderBlock({block, height, stageCount}) {
       practiceHtml(block);
   }
 
-  if (block.type === 'practice') {
+  if (block.type === 'practice'||block.type==='symbol-grid') {
     content = practiceHtml(block);
   }
 
@@ -245,7 +248,7 @@ function renderSheet() {
     return `<article class="sheet worksheet-page" ${paperAttributes} id="page-${index + 1}" data-page="${index}" aria-label="第 ${index + 1} 頁">${header}`+
       `<div class="sheet-body">${page.entries.map(renderBlock).join('')}</div>${footer}</article>`;
   }).join('')+(credits.length?`<article class="sheet credits-page" ${paperAttributes} id="page-${previewPageCount}" aria-label="素材來源"><div class="source-body"><h2>素材來源</h2><p>本文件使用 ${credits.length} 個字形／注音符號的官方累積逐筆字卡。</p><dl><dt>著作權人</dt><dd>中華民國教育部</dd><dt>來源</dt><dd>國字標準字體筆順學習網<br><a href="https://stroke-order.learningweb.moe.edu.tw/">https://stroke-order.learningweb.moe.edu.tw/</a></dd><dt>授權</dt><dd>創用 CC 姓名標示－非商業性－禁止改作 3.0 臺灣版<br><a href="https://creativecommons.org/licenses/by-nc-nd/3.0/tw/">https://creativecommons.org/licenses/by-nc-nd/3.0/tw/</a></dd></dl><p>字卡保留官方原始 SVG 檔案內容。</p></div></article>`:'');
-  $('pageStatus').textContent = `${pages.length} 頁練習${credits.length?' ＋ 1 頁素材來源':''} · ${grid.columns} 格 / 行${grid.rows>1?' · 每組 2 行':''}`;
+  $('pageStatus').textContent = `${pages.length} 頁練習${credits.length?' ＋ 1 頁素材來源':''} · ${grid.columns} 格 / 行${!blocks.some(block=>block.type==='symbol-grid')&&grid.rows>1?' · 每組 2 行':''}`;
   $('addTextRow').textContent=grid.rows>1?'＋ 加入描紅組':'＋ 加入描紅行';
   $('addBlankRow').textContent=grid.rows>1?'＋ 空白練習組':'＋ 空白練習行';
   $('pageSelect').innerHTML = Array.from({length:previewPageCount},(_, i) => `<option value="${i}" ${i === activePage ? 'selected' : ''}>${i<pages.length?`第 ${i + 1} 頁`:'素材來源'}</option>`).join('');
@@ -311,27 +314,29 @@ function renderInspector() {
     $('inspector').innerHTML = '<div class="inspector-empty">點選紙張上的區塊，即可調整其內容、描紅及順序。</div>';
     return;
   }
-  const grid=getGridStyle(documentOptions().gridSize);
+  const grid=gridForBlock(block,documentOptions().gridSize);
+  const symbolGrid=block.type==='symbol-grid';
   const multiline=grid.rows>1;
-  const displayCount=Math.min(block.count??0,grid.capacity);
-  const typeName = {heading:'分組標題', character:'單字逐筆', practice:multiline?`${grid.label}練習組 · 2 行`:'12 格練習行'}[block.type];
+  const fillLimit=symbolGrid?Math.min(characters(block.text).length,grid.capacity):grid.capacity;
+  const displayCount=Math.min(block.count??0,fillLimit);
+  const typeName = {'symbol-grid':'注音全描紅',heading:'分組標題', character:'單字逐筆', practice:multiline?`${grid.label}練習組 · 2 行`:'12 格練習行'}[block.type];
   let html = `<div class="inspector-type">${typeName}</div>`+
     `<label class="field">${block.type === 'heading' ? '標題' : block.type === 'character' ? '單字' : '練習文字'}</label>`+
-    `<input class="field-input" id="insText" value="${escapeHtml(block.text)}">`+
+    `<input class="field-input" id="insText" ${symbolGrid?'maxlength="48"':''} value="${escapeHtml(block.text)}">`+
     `<div class="help">${block.type === 'character' ? '只顯示已取得來源的真正逐筆素材。' :
-      block.type === 'practice' ? multiline?`每組 ${grid.capacity} 格，分成 ${grid.columns}＋${grid.capacity-grid.columns} 格兩行。`:'文字自動重複排列在 12 個米字格中。' : ''}</div>`;
+      symbolGrid?'符號依序放入米字格，每個符號一格；末行自動補空白米字格。':block.type === 'practice' ? multiline?`每組 ${grid.capacity} 格，分成 ${grid.columns}＋${grid.capacity-grid.columns} 格兩行。`:'文字自動重複排列在 12 個米字格中。' : ''}</div>`;
 
   if (block.type === 'heading') {
     html += `<label class="field">副標題</label><input class="field-input" id="insSub" value="${escapeHtml(block.sub || '')}">`;
   } else {
-    html += `<div class="cell-summary" id="cellSummary" role="status"></div><label class="field">自動填字格數 <span id="countValue">${displayCount}</span> / ${grid.capacity}</label>`+
-      `<input type="range" id="insCount" min="0" max="${grid.capacity}" value="${displayCount}" class="range">`+
+    html += `<div class="cell-summary" id="cellSummary" role="status"></div><label class="field">自動填字格數 <span id="countValue">${displayCount}</span> / ${fillLimit}</label>`+
+      `<input type="range" id="insCount" min="0" max="${fillLimit}" value="${displayCount}" class="range">`+
       `<div class="help">空白格內不放文字或字圖；格線樣式可在左側設定。</div>`+
       `<button id="clearRow" class="mini" style="width:100%;margin-top:8px">${multiline?`清空本組 ${grid.capacity} 格`:'清空本行 12 格'}</button>`;
     {
-      html += `<label class="field">第一組灰度 <span id="light1Value">${block.light1}%</span></label>`+
-        `<input type="range" id="insLight1" min="5" max="90" value="${block.light1}" class="range">`+
-        `<label class="field">後續組灰度 <span id="light2Value">${block.light2}%</span></label>`+
+      html += `<label class="field">${symbolGrid?'描紅灰度':'第一組灰度'} <span id="light1Value">${block.light1}%</span></label>`+
+        `<input type="range" id="insLight1" min="5" max="90" value="${block.light1}" class="range">`;
+      if(!symbolGrid)html+=`<label class="field">後續組灰度 <span id="light2Value">${block.light2}%</span></label>`+
         `<input type="range" id="insLight2" min="5" max="90" value="${block.light2}" class="range">`;
       if (block.manual) html += `<div class="warn">此行手動編排過格子。改變描紅格數將清除手動格子。</div>`+
         `<button id="restoreAuto" style="margin-top:8px">恢復自動排字</button>`;
@@ -411,7 +416,7 @@ function renderInspector() {
 function updateCellSummary() {
   const block=blocks.find(item=>item.id===selectedId);
   if(!$('cellSummary')||!block||block.type==='heading')return;
-  const grid=getGridStyle(documentOptions().gridSize);
+  const grid=gridForBlock(block,documentOptions().gridSize);
   const {filled,blank}=cellCounts(block,grid.id);
   $('cellSummary').textContent=`已填 ${filled} 格 · 空白 ${blank} 格（共 ${grid.capacity} 格）`;
 }
@@ -442,15 +447,14 @@ function moveBlock(id, diff) {
 function setCell(rowId, index, ch, source=null) {
   const target = blocks.find(b => b.id === rowId);
   const gridSize=documentOptions().gridSize;
-  const capacity=getGridStyle(gridSize).capacity;
-  if (!target || target.type === 'heading' || index < 0 || index >= capacity) return;
-  // Editing a 12-cell preset must preserve any saved extra cells from medium.
-  const editableCells=block=>cellsForRow(block,
-    block.manual?.length===MAX_CELLS_PER_GROUP||block.count>12?'medium':gridSize);
+  if (!target || target.type === 'heading') return;
+  const capacity=gridForBlock(target,gridSize).capacity;
+  if (!Number.isInteger(index)||index<0||index>=capacity)return;
+  const editableCells=block=>cellsForRow(block,gridSize,{includeHidden:true});
   const cells = editableCells(target);
   if (source) {
     const sourceBlock = blocks.find(b => b.id === source.id && b.type !== 'heading');
-    if (sourceBlock && source.index >= 0 && source.index < capacity) {
+    if (sourceBlock && source.index >= 0 && source.index < gridForBlock(sourceBlock,gridSize).capacity) {
       const sourceCells = sourceBlock.id === rowId ? cells : editableCells(sourceBlock);
       const moved = sourceCells[source.index];
       sourceCells[source.index] = {ch:'',opacity:0};
@@ -623,10 +627,10 @@ bind('addCharPractice','click',()=> {
 });
 
 for (const [id,template] of [
-  ['templateV1','v1'], ['templateV2','v2'], ['templateWord','word'], ['templateBlank','blank'], ['templatePhonetic','phonetic'],
+  ['templateV1','v1'], ['templateV2','v2'], ['templateWord','word'], ['templateBlank','blank'], ['templatePhonetic','phonetic'], ['templatePhoneticTracing','phonetic-tracing'],
 ]) {
   bind(id,'click',()=> {
-    const message=template==='phonetic'?'建立完整的 37 音注音字帖，取代現有文字、標題與編排；紙張、字格大小與姓名等欄位保留。可按「撤銷」恢復。是否繼續？':
+    const message=template==='phonetic-tracing'?'建立一張 37 音全描紅練習頁，取代現有文字、標題與編排；紙張及字格大小保留，可撤銷恢復。是否繼續？':template==='phonetic'?'建立完整的 37 音注音字帖，取代現有文字、標題與編排；紙張、字格大小與姓名等欄位保留。可按「撤銷」恢復。是否繼續？':
       '重新套用範本會重建區塊、灰度與手動字格；頁首設定保留。完成後可按「撤銷」恢復。是否繼續？';
     if (confirm(message)) {
       applyTemplate(template);

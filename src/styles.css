@@ -98,4 +98,4 @@ button:disabled{opacity:.4;cursor:default}
   .sheet .block{break-inside:avoid;page-break-inside:avoid}
 }
 
-.template-row #templatePhonetic{grid-column:1/-1}
+.template-row #templatePhonetic,.template-row #templatePhoneticTracing{grid-column:1/-1}

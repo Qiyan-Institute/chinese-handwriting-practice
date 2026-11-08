@@ -10,3 +10,13 @@ export const GRID_STYLES = Object.freeze({
   large:style('large', '幼兒大格', 6, 206, 208, 76),
 });
 export const getGridStyle = value => GRID_STYLES[value === 'medium' || value === 'large' ? value : 'standard'];
+
+export const MAX_SYMBOL_CELLS = 48;
+export function getSymbolGridStyle(symbolCount, gridSize) {
+  const grid=getGridStyle(gridSize);
+  const count=Math.max(1,Math.min(MAX_SYMBOL_CELLS,Math.trunc(Number(symbolCount))||1));
+  const rows=Math.ceil(count/grid.columns);
+  const gridHeight=rows*grid.cellSize;
+  return {...grid,rows,capacity:rows*grid.columns,gridHeight,
+    lineHeight:Math.ceil(gridHeight)+2,practiceHeight:Math.ceil(gridHeight)+4};
+}

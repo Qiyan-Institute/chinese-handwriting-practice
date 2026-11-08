@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import {getPaperSize} from './paper.js';
-import {getGridStyle} from './grid-style.js?v=0.5.6';
+import {getGridStyle} from './grid-style.js?v=0.6.1';
+import {gridForBlock} from './model.js?v=0.6.1';
 // Keep A4 defaults for existing callers; selected paper controls the page height.
 export const PAGE = Object.freeze({
   width:getPaperSize('a4').width, height:getPaperSize('a4').height,
@@ -13,6 +14,7 @@ export function blockHeight(block, stageCount = 0, gridSize = 'standard') {
   const practiceHeight=getGridStyle(gridSize).practiceHeight;
   if (block.type === 'heading') return PAGE.heading;
   if (block.type === 'practice') return practiceHeight;
+  if (block.type === 'symbol-grid') return gridForBlock(block,gridSize).practiceHeight;
   if (block.type === 'character') return PAGE.characterBase + practiceHeight - PAGE.practice + PAGE.strokeRow * Math.max(1, Math.ceil(stageCount / PAGE.strokesPerRow));
   throw new Error(`無法排版的區塊：${block.type}`);
 }
