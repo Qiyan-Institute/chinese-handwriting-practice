@@ -1,5 +1,6 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import {getPaperSize} from './paper.js';
+import {getGridStyle} from './grid-style.js';
 // Keep A4 defaults for existing callers; selected paper controls the page height.
 export const PAGE = Object.freeze({
   width:getPaperSize('a4').width, height:getPaperSize('a4').height,
@@ -8,14 +9,15 @@ export const PAGE = Object.freeze({
 });
 export const CONTENT_HEIGHT = PAGE.height - PAGE.paddingTop - PAGE.paddingBottom - PAGE.header - PAGE.headerGap - PAGE.footer;
 
-export function blockHeight(block, stageCount = 0) {
+export function blockHeight(block, stageCount = 0, gridSize = 'standard') {
+  const practiceHeight=getGridStyle(gridSize).practiceHeight;
   if (block.type === 'heading') return PAGE.heading;
-  if (block.type === 'practice') return PAGE.practice;
-  if (block.type === 'character') return PAGE.characterBase + PAGE.strokeRow * Math.max(1, Math.ceil(stageCount / PAGE.strokesPerRow));
+  if (block.type === 'practice') return practiceHeight;
+  if (block.type === 'character') return PAGE.characterBase + practiceHeight - PAGE.practice + PAGE.strokeRow * Math.max(1, Math.ceil(stageCount / PAGE.strokesPerRow));
   throw new Error(`無法排版的區塊：${block.type}`);
 }
 
-export function paginate(blocks, getStageCount = () => 0, headerHeight = PAGE.header, paperSize = 'a4') {
+export function paginate(blocks, getStageCount = () => 0, headerHeight = PAGE.header, paperSize = 'a4', gridSize = 'standard') {
   const paper=getPaperSize(paperSize);
   const available=paper.height-PAGE.paddingTop-PAGE.paddingBottom-headerHeight-(headerHeight?PAGE.headerGap:0)-PAGE.footer;
   const pages = [];
@@ -24,12 +26,12 @@ export function paginate(blocks, getStageCount = () => 0, headerHeight = PAGE.he
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index];
     const count = getStageCount(block);
-    const height = blockHeight(block, count);
+    const height = blockHeight(block, count, gridSize);
     if (height > available) throw new Error(`單一區塊超過 ${paper.label} 可用高度`);
     // Keep a heading with its following block whenever that pair fits on a page.
     const next = blocks[index + 1];
     const pair = block.type === 'heading' && next && !next.pageBreakBefore
-      ? height + blockHeight(next, getStageCount(next)) : height;
+      ? height + blockHeight(next, getStageCount(next), gridSize) : height;
     if (block.pageBreakBefore || page.used + height > available ||
         (pair <= available && page.used + pair > available)) flush();
     page.entries.push({ block, height, stageCount: count });

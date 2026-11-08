@@ -3,14 +3,15 @@ import {
   CELLS_PER_ROW, DEFAULT_TEXT, characters, newId, clamp,
   createPracticeRow, createCharacterBlock, createHeading, createTemplate,
   cellsForRow, cellCounts, charactersInBlocks, officialCredits, documentSettings, createProject, validateProject,
-} from './model.js';
+} from './model.js?v=0.5.4';
 import {getStages, getGlyphUrl, safeImageUrl, importStrokeImages, officialLookupUrl, getAssetInfo, fetchOfficialStages} from './stroke-service.js';
-import {paginate, moveBlockToPage, PAGE} from './pagination.js';
+import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.5.4';
 import {getPaperSize} from './paper.js';
+import {getGridStyle} from './grid-style.js';
 import {officialEmbedUrl} from './moe.js';
 import {DocumentHistory} from './history.js';
 import {updateWorksheetText} from './text-update.js';
-import {downloadWorksheetPdf, waitForImages} from './pdf-export.js';
+import {downloadWorksheetPdf, waitForImages} from './pdf-export.js?v=0.5.4';
 
 // 編輯和排版都在本機執行；缺字由本機服務向教育部請求字卡。
 const $ = id => document.getElementById(id);
@@ -51,7 +52,7 @@ function sourceText() {
 }
 
 function documentOptions() {
-  return documentSettings(Object.fromEntries(['paperSize','pageTitle','pageLabel','studentName','className','practiceDate','blankStyle',
+  return documentSettings(Object.fromEntries(['paperSize','gridSize','pageTitle','pageLabel','studentName','className','practiceDate','blankStyle',
     'showTitle','showName','showClass','showDate'].map(id=>[id,$(id).type==='checkbox'?$(id).checked:$(id).value])));
 }
 
@@ -216,7 +217,8 @@ function renderBlock({block, height, stageCount}) {
 function renderSheet() {
   const opts = documentOptions();
   const paper = getPaperSize(opts.paperSize);
-  const paperAttributes = `data-paper-size="${paper.id}" style="--paper-width:${paper.widthMm}mm;--paper-height:${paper.heightMm}mm"`;
+  const grid = getGridStyle(opts.gridSize);
+  const paperAttributes = `data-paper-size="${paper.id}" data-grid-size="${grid.id}" style="--paper-width:${paper.widthMm}mm;--paper-height:${paper.heightMm}mm;--grid-columns:${grid.columns};--grid-height:${grid.gridHeight}px;--practice-line-height:${grid.lineHeight}px;--glyph-font-size:${grid.fontSize}px"`;
   $('printPaperStyle').textContent = `@page{size:${paper.cssName};margin:0}`;
   $('previewTitle').textContent = `多頁 ${paper.label} 預覽`;
   const meta=[opts.showName?`${escapeHtml(opts.pageLabel)}：${escapeHtml(opts.studentName)||'____________'}`:'',
@@ -225,7 +227,7 @@ function renderSheet() {
   const hasTitle=opts.showTitle&&opts.pageTitle;
   const headerHeight=(hasTitle?71:0)+(meta.length?24:0);
   const header=headerHeight?`<div class="sheet-header" style="height:${headerHeight}px">${hasTitle?`<div class="sheet-title"><span>${escapeHtml(opts.pageTitle)}</span></div>`:''}${meta.length?`<div class="sheet-meta">${meta.map(text=>`<span>${text}</span>`).join('')}</div>`:''}</div>`:'';
-  pages = paginate(blocks, block => getStages(characters(block.text)[0], customAssets)?.length || 0,headerHeight,paper.id);
+  pages = paginate(blocks, block => getStages(characters(block.text)[0], customAssets)?.length || 0,headerHeight,paper.id,grid.id);
   const credits=officialCredits(blocks,assetMetadata);
   previewPageCount=pages.length+(credits.length?1:0);
   activePage = Math.min(activePage, previewPageCount - 1);
@@ -234,7 +236,9 @@ function renderSheet() {
     return `<article class="sheet worksheet-page" ${paperAttributes} id="page-${index + 1}" data-page="${index}" aria-label="第 ${index + 1} 頁">${header}`+
       `<div class="sheet-body">${page.entries.map(renderBlock).join('')}</div>${footer}</article>`;
   }).join('')+(credits.length?`<article class="sheet credits-page" ${paperAttributes} id="page-${previewPageCount}" aria-label="素材來源"><div class="source-body"><h2>素材來源</h2><p>本文件使用 ${credits.length} 個字的官方累積逐筆字卡。</p><dl><dt>著作權人</dt><dd>中華民國教育部</dd><dt>來源</dt><dd>國字標準字體筆順學習網<br><a href="https://stroke-order.learningweb.moe.edu.tw/">https://stroke-order.learningweb.moe.edu.tw/</a></dd><dt>授權</dt><dd>創用 CC 姓名標示－非商業性－禁止改作 3.0 臺灣版<br><a href="https://creativecommons.org/licenses/by-nc-nd/3.0/tw/">https://creativecommons.org/licenses/by-nc-nd/3.0/tw/</a></dd></dl><p>字卡保留官方原始 SVG 檔案內容。</p></div></article>`:'');
-  $('pageStatus').textContent = `${pages.length} 頁練習${credits.length?' ＋ 1 頁素材來源':''} · 12 格 / 行`;
+  $('pageStatus').textContent = `${pages.length} 頁練習${credits.length?' ＋ 1 頁素材來源':''} · ${grid.columns} 格 / 行${grid.rows>1?' · 每組 2 行':''}`;
+  $('addTextRow').textContent=grid.rows>1?'＋ 加入描紅組':'＋ 加入描紅行';
+  $('addBlankRow').textContent=grid.rows>1?'＋ 空白練習組':'＋ 空白練習行';
   $('pageSelect').innerHTML = Array.from({length:previewPageCount},(_, i) => `<option value="${i}" ${i === activePage ? 'selected' : ''}>${i<pages.length?`第 ${i + 1} 頁`:'素材來源'}</option>`).join('');
   if ($('moveToPage')) {
     const selectedPage=pages.findIndex(page=>page.entries.some(entry=>entry.block.id===selectedId));
@@ -296,12 +300,13 @@ function renderInspector() {
     $('inspector').innerHTML = '<div class="inspector-empty">點選紙張上的區塊，即可調整其內容、描紅及順序。</div>';
     return;
   }
-  const typeName = {heading:'分組標題', character:'單字逐筆', practice:'12 格練習行'}[block.type];
+  const large=documentOptions().gridSize==='large';
+  const typeName = {heading:'分組標題', character:'單字逐筆', practice:large?'大格練習組 · 2 行':'12 格練習行'}[block.type];
   let html = `<div class="inspector-type">${typeName}</div>`+
     `<label class="field">${block.type === 'heading' ? '標題' : block.type === 'character' ? '單字' : '練習文字'}</label>`+
     `<input class="field-input" id="insText" value="${escapeHtml(block.text)}">`+
     `<div class="help">${block.type === 'character' ? '只顯示已取得來源的真正逐筆素材。' :
-      block.type === 'practice' ? '文字自動重複排列在 12 個米字格中。' : ''}</div>`;
+      block.type === 'practice' ? large?'每組 12 格，分成 2 行，每行 6 個大格。':'文字自動重複排列在 12 個米字格中。' : ''}</div>`;
 
   if (block.type === 'heading') {
     html += `<label class="field">副標題</label><input class="field-input" id="insSub" value="${escapeHtml(block.sub || '')}">`;
@@ -309,7 +314,7 @@ function renderInspector() {
     html += `<div class="cell-summary" id="cellSummary" role="status"></div><label class="field">自動填字格數 <span id="countValue">${block.count}</span> / 12</label>`+
       `<input type="range" id="insCount" min="0" max="12" value="${block.count}" class="range">`+
       `<div class="help">空白格內不放文字或字圖；格線樣式可在左側設定。</div>`+
-      `<button id="clearRow" class="mini" style="width:100%;margin-top:8px">清空本行 12 格</button>`;
+      `<button id="clearRow" class="mini" style="width:100%;margin-top:8px">${large?'清空本組 12 格':'清空本行 12 格'}</button>`;
     {
       html += `<label class="field">第一組灰度 <span id="light1Value">${block.light1}%</span></label>`+
         `<input type="range" id="insLight1" min="5" max="90" value="${block.light1}" class="range">`+
@@ -473,7 +478,7 @@ document.addEventListener('keydown',event=>{
     event.preventDefault();restoreHistory(key==='y'||event.shiftKey?'redo':'undo');
   }
 });
-for(const id of ['paperSize','showTitle','showName','showClass','showDate','blankStyle']) bind(id,'change',()=>{renderSheet();saveLocal();});
+for(const id of ['paperSize','gridSize','showTitle','showName','showClass','showDate','blankStyle']) bind(id,'change',()=>{renderSheet();renderInspector();saveLocal();});
 bind('allSignatures','change',event=>{for(const block of blocks)if(block.type!=='heading')block.signature=event.target.checked;saveLocal();render();});
 bind('cleanLayout','click',()=>{
   for(const id of ['showName','showClass','showDate'])$(id).checked=false;

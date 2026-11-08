@@ -70,3 +70,14 @@ test('紙張設定隨 JSON 往返，舊專案及未知值保留 A4',()=>{
   assert.equal(restored.paperSize,'letter');
   assert.deepEqual(restored.blocks,validateProject(project).blocks);
 });
+
+test('大格樣式隨 JSON 保存且不更改原有手動字格，舊檔仍為標準格',()=>{
+  const row=createPracticeRow('孫中山',6);
+  row.manual=Array.from({length:12},(_,i)=>({ch:i===6?'山':'',opacity:i===6?.5:0}));
+  const original=createProject('孫中山',[row]);
+  assert.equal(validateProject(original).gridSize,'standard');
+  assert.equal(validateProject({...original,gridSize:'unknown'}).gridSize,'standard');
+  const restored=validateProject(JSON.parse(JSON.stringify({...original,gridSize:'large',paperSize:'letter'})));
+  assert.equal(restored.gridSize,'large');assert.equal(restored.paperSize,'letter');
+  assert.deepEqual(restored.blocks,validateProject(original).blocks);
+});

@@ -410,6 +410,67 @@ try {
   assert((await layout()).every(page=>page.fits&&page.scrollFits&&Math.abs(page.width-816)<1));
   await cdp('Emulation.setDeviceMetricsOverride',{width:1500,height:1000,deviceScaleFactor:1,mobile:false});
   passed.push('Letter 在 390px 窄螢幕仍保留完整紙張幾何');
+  const largeProject={...creditsProject,sourceText:'大格驗證',appliedText:'大格驗證',paperSize:'letter',gridSize:'standard',
+    customAssets:{...saved.customAssets,...creditsProject.customAssets},assetMetadata:{...saved.assetMetadata,...creditsProject.assetMetadata},
+    blocks:[{id:'large-strokes',type:'character',text:'學',count:6,signature:true},
+      {id:'large-heading',type:'heading',text:'大格練習',sub:'每組兩行'},
+      {id:'large-manual',type:'practice',text:'孫中山',count:6,signature:true,manual:Array.from({length:12},(_,i)=>({ch:i===0?'孫':i===6?'山':'',opacity:.5}))},
+      {id:'large-auto',type:'practice',text:'李',count:6,signature:false},
+      {id:'large-blank',type:'practice',text:'孫中山',count:0,signature:false}]};
+  const largeFixture=path.join(temporary,'large-fixture.json');
+  await writeFile(largeFixture,JSON.stringify(largeProject));await setFiles('#loadJson',[largeFixture]);
+  await waitFor(()=>evaluate("document.querySelector('[data-block=\"large-strokes\"] .stroke-cells').children.length===64"),'大格前的 64 畫專案');
+  const beforeLarge=await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)");
+  const standardPageCount=await evaluate("document.querySelectorAll('.worksheet-page').length");
+  await input('#gridSize','large','change');
+  assert((await evaluate("document.querySelectorAll('.worksheet-page').length"))>standardPageCount);
+  assert((await layout()).every(page=>page.fits&&page.scrollFits));
+  assert(await evaluate(`(()=>{
+    const grid=document.querySelector('[data-block="large-manual"] .practice-grid');
+    const first=grid.children[0].getBoundingClientRect(),second=grid.children[6].getBoundingClientRect();
+    return grid.children.length===12&&Math.abs(first.width-610/6)<.1&&Math.abs(first.height-first.width)<.1&&
+      Math.abs(second.left-first.left)<.1&&Math.abs(second.top-first.bottom)<.1&&
+      parseFloat(getComputedStyle(grid.querySelector('.cell-character')).fontSize)===76;
+  })()`));
+  assert.equal(await evaluate("JSON.stringify(JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks)"),beforeLarge);
+  assert(await evaluate("[...document.querySelector('[data-block=\"large-blank\"] .practice-grid').children].every(cell=>!cell.querySelector('.cell-character')&&cell.querySelector('.grid-lines'))"));
+  await click('#undoBtn');assert.equal(await evaluate("document.getElementById('gridSize').value"),'standard');
+  await click('#redoBtn');assert.equal(await evaluate("document.getElementById('gridSize').value"),'large');
+  passed.push('幼兒大格約 2.7 cm、每行 6 格、每組兩行，保留 12 格資料並支援撤銷／重做');
+  await input('#cellMode','select','change');
+  const lowerCell='[data-block="large-manual"] [data-cell-index="6"]';
+  await click(lowerCell);
+  assert(await evaluate("document.getElementById('clearRow').textContent.includes('本組')"));
+  await evaluate(`document.querySelector(${JSON.stringify(lowerCell)}).dispatchEvent(new MouseEvent('click',{bubbles:true,shiftKey:true}))`);
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lowerCell)}).dataset.cellState`),'blank');
+  await click('#undoBtn');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lowerCell)}).dataset.cellState`),'filled');
+  const largeShots=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
+  await writeFile(path.join(output,'large-editor.png'),Buffer.from(largeShots.data,'base64'));
+  await click('#downloadProject');
+  const largeJson=await waitFor(async ()=>(await readdir(output)).find(name=>name.includes('大格驗證')&&name.endsWith('.json')),'大格 JSON');
+  assert.equal(JSON.parse(await readFile(path.join(output,largeJson),'utf8')).gridSize,'large');
+  await input('#gridSize','standard','change');await setFiles('#loadJson',[path.join(output,largeJson)]);
+  await waitFor(()=>evaluate("document.getElementById('gridSize').value==='large'"),'大格 JSON 還原');
+  passed.push('大格第二行仍可清空及撤銷，空白米字格無字，樣式與手動字格隨 JSON 還原');
+  const largePages=await evaluate("document.querySelectorAll('.sheet').length");
+  const nativeLarge=await cdp('Page.printToPDF',{printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false});
+  const nativeLargeBytes=Buffer.from(nativeLarge.data,'base64');
+  assert.equal([...nativeLargeBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,largePages);
+  await writeFile(path.join(output,'large-letter-print.pdf'),nativeLargeBytes);
+  const beforeLargePdf=new Set(await readdir(output));
+  await click('#downloadPdf');
+  const largeDownload=await waitFor(async ()=>(await readdir(output)).find(name=>!beforeLargePdf.has(name)&&name.endsWith('.pdf')),'大格 Letter PDF',60000);
+  const largeBytes=await readFile(path.join(output,largeDownload));
+  assert.equal([...largeBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,largePages);
+  const largeBoxes=[...largeBytes.toString('latin1').matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)];
+  assert(largeBoxes.length&&largeBoxes.every(box=>Math.abs(Number(box[1])-612)<.05&&Math.abs(Number(box[2])-792)<.05));
+  await input('#paperSize','a4','change');
+  assert((await layout()).every(page=>page.fits&&page.scrollFits&&Math.abs(page.width-793.7)<1));
+  await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  assert((await layout()).every(page=>page.fits&&page.scrollFits));
+  await cdp('Emulation.setDeviceMetricsOverride',{width:1500,height:1000,deviceScaleFactor:1,mobile:false});
+  passed.push('64 畫與大格簽核不溢位，A4／Letter 及窄螢幕正確重排，大格 PDF 頁數與預覽一致');
   if(process.env.QA_PDF_PROJECT) {
     await setFiles('#loadJson',[path.resolve(process.env.QA_PDF_PROJECT)]);
     await waitFor(()=>evaluate("document.getElementById('toast').textContent.includes('已載入字帖專案')"),'真實字卡專案');

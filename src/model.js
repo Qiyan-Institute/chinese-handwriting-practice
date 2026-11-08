@@ -3,6 +3,7 @@
  * 版型與文字資料模型。純函式，不讀寫 DOM，方便測試、替換 UI。
  */
 import {getPaperSize} from './paper.js';
+import {getGridStyle} from './grid-style.js';
 
 export const CELLS_PER_ROW = 12;
 export const FORMAT = 'hanzi-worksheet-studio-v2';
@@ -13,6 +14,7 @@ export function documentSettings(data={}) {
   const legacyTitle='姓名描寫規範字帖（正體楷體）';
   return {
     paperSize:getPaperSize(data.paperSize).id,
+    gridSize:getGridStyle(data.gridSize).id,
     pageTitle:data.pageTitle===legacyTitle?DEFAULT_TITLE:String(data.pageTitle??DEFAULT_TITLE).slice(0,120),
     showTitle:data.showTitle!==false,
     showName:data.showName===true,showClass:data.showClass===true,showDate:data.showDate===true,

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>正體字帖工坊｜繁體字描紅與筆順練習</title>
 <meta name="description" content="免費開源的繁體字描紅、標準筆順與多頁 A4／US Letter 字帖工具，預設孫中山練習範例。">
-<link rel="stylesheet" href="./src/styles.css?v=0.5.3">
+<link rel="stylesheet" href="./src/styles.css?v=0.5.4">
 <style id="printPaperStyle">@page{size:A4;margin:0}</style>
 </head>
 <body>
@@ -20,6 +20,8 @@
       <button id="applyText" class="primary" style="width:100%;margin-top:8px" disabled>更新現有字帖文字</button>
       <div id="textUpdateStatus" class="legend" role="status"></div>
       <label class="field" for="paperSize">紙張大小</label><select class="field-input" id="paperSize"><option value="a4">A4（210 × 297 mm）</option><option value="letter">US Letter（8.5 × 11 吋）</option></select>
+      <label class="field" for="gridSize">字格大小</label><select class="field-input" id="gridSize"><option value="standard">標準字格（約 1.3 cm · 12 格／行）</option><option value="large">幼兒大格（約 2.7 cm · 6 格／行）</option></select>
+      <div class="legend">大格每組分兩行，文字與空白格會保留，依所選紙張自動分頁。</div>
       <label class="field" for="pageTitle">頁面標題</label><input class="field-input" id="pageTitle" maxlength="120" value="正體字書寫練習">
       <label class="switch"><span>顯示頁面標題</span><input id="showTitle" type="checkbox" checked></label>
       <details id="headerOptions" class="options-details"><summary>可選抬頭與簽核</summary>
@@ -74,6 +76,6 @@
   <p>中華民國教育部 · <a href="https://stroke-order.learningweb.moe.edu.tw/" target="_blank" rel="noopener noreferrer">國字標準字體筆順學習網</a><br><a href="https://stroke-order.learningweb.moe.edu.tw/page.jsp?ID=52" target="_blank" rel="noopener noreferrer">CC BY-NC-ND 3.0 臺灣版／官方版權說明</a></p>
   <p>需要網路；若動畫未顯示，可關閉視窗後使用官網查詢連結。</p>
 </dialog>
-<script type="module" src="./src/main.js?v=0.5.3"></script>
+<script type="module" src="./src/main.js?v=0.5.4"></script>
 
 </body></html>

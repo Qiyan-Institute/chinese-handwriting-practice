@@ -76,3 +76,19 @@ test('Letter 長文件與 64 畫單字遵守高度、手動分頁和標題連同
   const at=group.entries.findIndex(entry=>entry.block.id===heading.id);
   assert.equal(group.entries[at+1].block.id,blocks[11].id);
 });
+
+test('大格重排 A4 及 Letter，64 畫、標題和練習組均完整且不溢位',()=>{
+  const blocks=[createCharacterBlock('龘'),createHeading('大格練習'),...Array.from({length:20},()=>createPracticeRow('孫中山',6))];
+  blocks[7].pageBreakBefore=true;
+  for(const paper of ['a4','letter']) {
+    const large=paginate(blocks,()=>64,98,paper,'large');
+    const standard=paginate(blocks,()=>64,98,paper);
+    assert(large.length>standard.length);
+    assert(large.every(page=>page.used<=(paper==='letter'?880:947)));
+    assert.deepEqual(large.flatMap(page=>page.entries.map(entry=>entry.block.id)),blocks.map(block=>block.id));
+    assert(large.some(page=>page.entries[0].block.id===blocks[7].id));
+    const group=large.find(page=>page.entries.some(entry=>entry.block.type==='heading'));
+    const at=group.entries.findIndex(entry=>entry.block.type==='heading');
+    assert.equal(group.entries[at+1].block.id,blocks[2].id);
+  }
+});

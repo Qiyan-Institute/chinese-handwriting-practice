@@ -1,0 +1,57 @@
+{
+  "format": "hanzi-worksheet-studio-v2",
+  "updatedAt": "2026-11-08T00:46:00.866Z",
+  "sourceText": "孫中山",
+  "blocks": [
+    {
+      "id": "6deabcad-ae4d-4d61-b9e2-4ec690178ee7",
+      "type": "heading",
+      "text": "先看筆順，再描紅與自己寫",
+      "sub": "每格約 2.7 cm · 每行 6 格"
+    },
+    {
+      "id": "3f44c4d9-9d4e-4db9-bcbf-75b15e44a78f",
+      "type": "character",
+      "text": "孫",
+      "count": 6,
+      "light1": 35,
+      "light2": 25,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "fcbd57a4-11ed-4733-b4e4-ccdd68a67d8b",
+      "type": "character",
+      "text": "中",
+      "count": 6,
+      "light1": 35,
+      "light2": 25,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "85a9fa46-8568-4b95-9b3d-59ce6cf2e714",
+      "type": "character",
+      "text": "山",
+      "count": 6,
+      "light1": 35,
+      "light2": 25,
+      "signature": false,
+      "label": ""
+    }
+  ],
+  "customAssets": {},
+  "assetMetadata": {},
+  "paperSize": "letter",
+  "gridSize": "large",
+  "pageTitle": "孫中山・幼兒大格練習",
+  "showTitle": true,
+  "showName": false,
+  "showClass": false,
+  "showDate": false,
+  "pageLabel": "姓名",
+  "studentName": "",
+  "className": "",
+  "practiceDate": "",
+  "blankStyle": "grid"
+}
