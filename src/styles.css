@@ -97,3 +97,5 @@ button:disabled{opacity:.4;cursor:default}
   .sheet:last-child{break-after:auto;page-break-after:auto}
   .sheet .block{break-inside:avoid;page-break-inside:avoid}
 }
+
+.template-row #templatePhonetic{grid-column:1/-1}

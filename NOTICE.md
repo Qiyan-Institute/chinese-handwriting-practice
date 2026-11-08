@@ -13,6 +13,7 @@ AGPL 是自由／開源軟體授權，允許商業利用，沒有附加「禁止
 - https://stroke-order.learningweb.moe.edu.tw/
 - 版權說明：https://stroke-order.learningweb.moe.edu.tw/page.jsp?ID=52
 - 相關動畫／全筆順提示依官方說明採 CC BY-NC-ND 3.0 臺灣版，包含姓名標示、非商業、禁止改作條件。
+- 注音順序與 37 個 Unicode 符號依 https://stroke-order.learningweb.moe.edu.tw/phonetic.jsp 核對；字卡仍按需取得，適用同一官方素材授權。
 - assets/moe-index.json 僅保存官方公開嵌入清單的單字索引與來源資訊，不含字形或動畫。
 - 字卡由使用者執行本機程式後按需請求官方下載端點；倉庫不附完整字庫或官方字卡圖片。使用官方素材的輸出附素材來源頁。
 

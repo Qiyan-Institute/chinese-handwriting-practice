@@ -1,9 +1,10 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import {parseHostedStrokeArchive,readBounded} from './stroke-archive.js';
+import {PHONETIC_SYMBOLS} from '../src/phonetic.js';
 
 export function createHostedApp(assets,{fetcher=(input,init)=>globalThis.fetch(input,init),now=()=>Date.now()}={}) {
   const index=JSON.parse(assets['/assets/moe-index.json'].body);
-  const supported=new Set(index.characters),pending=new Map(),cache=new Map(),visitors=new Map();
+  const supported=new Set([...index.characters,...PHONETIC_SYMBOLS]),pending=new Map(),cache=new Map(),visitors=new Map();
   const allowedOrigins=new Set(['https://qiyan-institute.github.io']);
   const headers={'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'};
   const json=(data,status=200,extra={})=>new Response(JSON.stringify(data),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...extra}});
@@ -39,7 +40,7 @@ export function createHostedApp(assets,{fetcher=(input,init)=>globalThis.fetch(i
       return new Response(null,{status:204,headers:{...headers,...cors,'Access-Control-Allow-Methods':'GET, HEAD, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'}});
     }
     if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{...headers,Allow:'GET, HEAD'}});
-    if(url.pathname==='/api/health')return json({ok:true,service:'chinese-handwriting-practice',version:'0.5.1'});
+    if(url.pathname==='/api/health')return json({ok:true,service:'chinese-handwriting-practice',version:'0.6.0'});
     if(url.pathname==='/api/moe/strokes') {
       const reply=(data,status=200,extra={})=>json(data,status,{...cors,...extra});
       // Only a single character from the official index can reach the fixed

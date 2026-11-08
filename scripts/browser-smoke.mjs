@@ -2,6 +2,7 @@
 // Local Chrome integration check. No npm dependencies; uses Node 22's WebSocket.
 // Run: npm run test:browser (CHROME_PATH can override the executable).
 import assert from 'node:assert/strict';
+import {PHONETIC_SYMBOLS,PHONETIC_TEXT} from '../src/phonetic.js';
 import {spawn} from 'node:child_process';
 import {mkdtemp, readFile, writeFile, mkdir, readdir, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -546,6 +547,55 @@ try {
   assert((await layout()).every(page=>page.fits&&page.scrollFits));
   await cdp('Emulation.setDeviceMetricsOverride',{width:1500,height:1000,deviceScaleFactor:1,mobile:false});
   passed.push('中型 64 畫及簽核不溢位、A4／Letter 重排與下載 PDF 頁數正確');
+  // One click builds the fixed complete phonetic set independently of the draft.
+  await input('#sourceText','');
+  const beforePhonetic=await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio'))");
+  dialogAnswer=false;await click('#templatePhonetic');
+  assert.deepEqual(await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks"),beforePhonetic.blocks);
+  dialogAnswer=true;await click('#templatePhonetic');
+  await waitFor(()=>evaluate("document.querySelectorAll('[data-block-type=\"character\"]').length===37&&document.querySelectorAll('.stroke-mini img').length===37"),'37 音自動補齊逐筆',45000);
+  assert.equal(await evaluate("document.getElementById('sourceText').value"),PHONETIC_TEXT);
+  assert.equal(await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).appliedText"),PHONETIC_TEXT);
+  assert.equal(await evaluate("document.getElementById('pageTitle').value"),'注音符號書寫練習');
+  assert.equal(await evaluate("document.getElementById('gridSize').value"),beforePhonetic.gridSize);
+  assert.equal(await evaluate("document.getElementById('paperSize').value"),beforePhonetic.paperSize);
+  assert.deepEqual(await evaluate("[...document.querySelectorAll('[data-block-type=\"character\"] .char-caption strong')].map(e=>e.textContent)"),PHONETIC_SYMBOLS);
+  await click('#undoBtn');
+  assert.equal(await evaluate("document.getElementById('sourceText').value"),'');
+  assert.deepEqual(await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks"),beforePhonetic.blocks);
+  await click('#redoBtn');
+  assert.equal(await evaluate("document.querySelectorAll('[data-block-type=\"character\"]').length"),37);
+  await click('#templatePhonetic');
+  assert.equal(await evaluate("document.querySelectorAll('[data-block-type=\"character\"]').length"),37);
+  passed.push('注音按鈕由空草稿一次建立 ㄅ～ㄩ 37 音、保留紙張與字格設定，取消／撤銷／重做及重複套用正常');
+  for(const paper of ['a4','letter'])for(const grid of ['standard','medium','large']) {
+    await input('#paperSize',paper,'change');await input('#gridSize',grid,'change');
+    await click('#templatePhonetic');
+    assert((await layout()).every(page=>page.fits&&page.scrollFits));
+    const filled=grid==='medium'?8:6;
+    assert(await evaluate(`[...document.querySelectorAll('[data-block-type="character"] .practice-grid')].every(row=>row.querySelectorAll('[data-cell-state="filled"]').length===${filled}&&row.querySelectorAll('[data-cell-state="blank"]').length===${filled})`));
+  }
+  await input('#importChar','ㄅ');
+  assert(await evaluate("document.getElementById('showOfficial').hidden&&document.getElementById('officialLookup').href==='https://stroke-order.learningweb.moe.edu.tw/dictView.jsp?ID=12549'&&!document.getElementById('officialFrame').getAttribute('src')"));
+  passed.push('37 音在 A4／Letter 與三種字格均無溢位，逐筆及空白格完整，動畫入口指向官方注音原頁');
+  await click('#downloadProject');
+  const phoneticJson=await waitFor(async ()=>(await readdir(output)).find(name=>name.startsWith('字帖專案_ㄅ')&&name.endsWith('.json')),'注音全套 JSON');
+  const phoneticSaved=JSON.parse(await readFile(path.join(output,phoneticJson),'utf8'));
+  assert.deepEqual(phoneticSaved.blocks.filter(block=>block.type==='character').map(block=>block.text),PHONETIC_SYMBOLS);
+  await setFiles('#loadJson',[path.join(output,phoneticJson)]);
+  await waitFor(()=>evaluate("document.querySelectorAll('[data-block-type=\"character\"]').length===37"),'注音 JSON 還原');
+  await input('#paperSize','a4','change');await input('#gridSize','standard','change');
+  const phoneticPages=await evaluate("document.querySelectorAll('.sheet').length");
+  const beforePhoneticPdf=new Set(await readdir(output));
+  await click('#downloadPdf');
+  const phoneticDownload=await waitFor(async ()=>(await readdir(output)).find(name=>!beforePhoneticPdf.has(name)&&name.endsWith('.pdf')),'注音全套 PDF',90000);
+  const phoneticBytes=await readFile(path.join(output,phoneticDownload));
+  assert.equal([...phoneticBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,phoneticPages);
+  const phoneticNative=await cdp('Page.printToPDF',{printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false});
+  const phoneticNativeBytes=Buffer.from(phoneticNative.data,'base64');
+  assert.equal([...phoneticNativeBytes.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,phoneticPages);
+  await writeFile(path.join(output,'phonetic-all-print.pdf'),phoneticNativeBytes);
+  passed.push(`注音 37 音完整 JSON 往返，直接下載與列印均為 ${phoneticPages} 頁，無遺漏符號或空白頁`);
   if(process.env.QA_PDF_PROJECT) {
     await setFiles('#loadJson',[path.resolve(process.env.QA_PDF_PROJECT)]);
     await waitFor(()=>evaluate("document.getElementById('toast').textContent.includes('已載入字帖專案')"),'真實字卡專案');

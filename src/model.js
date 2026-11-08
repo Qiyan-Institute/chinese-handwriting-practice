@@ -3,6 +3,7 @@
  * 版型與文字資料模型。純函式，不讀寫 DOM，方便測試、替換 UI。
  */
 import {getPaperSize} from './paper.js';
+import {PHONETIC_SYMBOLS,PHONETIC_TEXT} from './phonetic.js?v=0.6.0';
 import {getGridStyle} from './grid-style.js?v=0.5.6';
 
 export const CELLS_PER_ROW = 12;
@@ -63,10 +64,16 @@ export function createHeading(text) {
 }
 
 export function createTemplate(kind, input = DEFAULT_TEXT, gridSize = 'standard') {
-  const text = characters(input).join('') || DEFAULT_TEXT;
+  const text = kind==='phonetic'?PHONETIC_TEXT:characters(input).join('') || DEFAULT_TEXT;
   const glyphs = characters(text);
   const capacity=getGridStyle(gridSize).capacity;
   if (glyphs.length > 240) throw new Error('單次範本最多 240 字，請拆成多個專案');
+  if (kind === 'phonetic') {
+    return [
+      {...createHeading('注音符號全套（37音）'),sub:'依教育部注音順序 · 逐筆、描紅與空白練習'},
+      ...PHONETIC_SYMBOLS.map(ch=>({...createCharacterBlock(ch),count:capacity/2})),
+    ];
+  }
   if (kind === 'blank') {
     return [createHeading('自由書寫練習'), ...Array.from({length: 12}, () => createPracticeRow(text, 0))];
   }

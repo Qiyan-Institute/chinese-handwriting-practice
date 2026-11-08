@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {deflateRawSync} from 'node:zlib';
 import {parseStrokeArchive,createStrokeRepository} from '../scripts/moe-strokes.mjs';
+import {PHONETIC_SYMBOLS} from '../src/phonetic.js';
 import {fetchOfficialStages} from '../src/stroke-service.js';
 
 const svg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L1 1"/></svg>');
@@ -68,4 +69,22 @@ test('下載失敗可重試；前端拒絕字卡不符並驗證真實 SVG 資料
   assert.equal(result.stages.length,1);
   assert.match(result.metadata.license,/BY-NC-ND/);
   await assert.rejects(fetchOfficialStages('習',async()=>new Response(JSON.stringify(card))),/單字不符/);
+});
+
+
+test('本機支援官方 37 音字卡，保留每個 SVG 原始內容與來源',async()=>{
+  const seen=[];
+  const repo=createStrokeRepository(new Set(['學']),async url=>{
+    const source=new URL(url),ch=source.searchParams.get('WORD');seen.push(ch);
+    assert.equal(source.origin,'https://stroke-order.learningweb.moe.edu.tw');
+    return new Response(archive([`${ch.codePointAt(0).toString(16)}_01.svg`]));
+  });
+  for(const ch of PHONETIC_SYMBOLS) {
+    const result=await repo(ch);
+    assert.equal(result.character,ch);
+    assert.deepEqual(Buffer.from(result.stages[0].split(',')[1],'base64'),svg);
+    assert.match(result.metadata.license,/BY-NC-ND/);
+  }
+  assert.deepEqual(seen,PHONETIC_SYMBOLS);
+  await assert.rejects(repo('ˊ'),/未收錄/);
 });

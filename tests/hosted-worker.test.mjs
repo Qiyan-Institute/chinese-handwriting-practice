@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {PHONETIC_SYMBOLS} from '../src/phonetic.js';
 import {deflateRawSync} from 'node:zlib';
 import {createHostedApp} from '../worker/index.js';
 import {parseHostedStrokeArchive,readBounded} from '../worker/stroke-archive.js';
@@ -8,8 +9,8 @@ import {parseStrokeArchive} from '../scripts/moe-strokes.mjs';
 
 const svg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L1 1"/></svg>');
 const crc=0x5dec1f0f; // independent Python zlib.crc32 result
-function fixture(method=8) {
-  const name=Buffer.from('5b78_01.svg'),data=method===8?deflateRawSync(svg):svg;
+function fixture(method=8,ch='學') {
+  const name=Buffer.from(`${ch.codePointAt(0).toString(16)}_01.svg`),data=method===8?deflateRawSync(svg):svg;
   const local=Buffer.alloc(30),central=Buffer.alloc(46),end=Buffer.alloc(22);
   local.writeUInt32LE(0x04034b50);local.writeUInt16LE(20,4);local.writeUInt16LE(method,8);
   local.writeUInt32LE(crc,14);local.writeUInt32LE(data.length,18);local.writeUInt32LE(svg.length,22);local.writeUInt16LE(name.length,26);
@@ -102,4 +103,21 @@ test('GitHub Pages 僅獲指定 origin 的 CORS，成功、缺字及預檢皆可
   assert.equal(preflight.status,204);assert.match(preflight.headers.get('Access-Control-Allow-Methods'),/GET/);
   const denied=await app.fetch(request('/api/moe/strokes',{method:'OPTIONS',headers:{Origin:'https://example.com'}}));
   assert.equal(denied.status,403);assert.equal(denied.headers.get('Access-Control-Allow-Origin'),null);
+});
+
+
+test('雲端 37 音白名單、原始 SVG 與 Pages CORS 一次核對',async()=>{
+  const seen=[];
+  const app=createHostedApp(assets,{fetcher:async url=>{
+    const ch=new URL(url).searchParams.get('WORD');seen.push(ch);return new Response(fixture(8,ch));
+  }});
+  for(const ch of PHONETIC_SYMBOLS) {
+    const response=await app.fetch(request('/api/moe/strokes?character='+encodeURIComponent(ch),{headers:{Origin:'https://qiyan-institute.github.io'}}));
+    assert.equal(response.status,200);
+    assert.equal(response.headers.get('Access-Control-Allow-Origin'),'https://qiyan-institute.github.io');
+    const result=await response.json();assert.equal(result.character,ch);
+    assert.deepEqual(Buffer.from(result.stages[0].split(',')[1],'base64'),svg);
+  }
+  assert.deepEqual(seen,PHONETIC_SYMBOLS);
+  assert.equal((await app.fetch(request('/api/moe/strokes?character='+encodeURIComponent('ˊ')))).status,404);
 });

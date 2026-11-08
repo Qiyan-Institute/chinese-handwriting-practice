@@ -11,9 +11,11 @@ for(const name of ['index.html','LICENSE','NOTICE.md'])await add(name);
 for(const folder of ['src','assets','examples'])for(const entry of (await readdir(path.join(root,folder),{withFileTypes:true})).sort((a,b)=>a.name.localeCompare(b.name))) {
   if(entry.isFile()&&['.js','.css','.json','.md'].includes(path.extname(entry.name)))await add(folder+'/'+entry.name);
 }
+const phonetic=await readFile(path.join(root,'src/phonetic.js'),'utf8');
 const decoder=await readFile(path.join(root,'worker/stroke-archive.js'),'utf8');
-const handler=(await readFile(path.join(root,'worker/index.js'),'utf8')).replace("import {parseHostedStrokeArchive,readBounded} from './stroke-archive.js';",'');
-const bundle=decoder+'\n'+handler+'\nexport default createHostedApp('+JSON.stringify(assets)+');\n';
+const handler=(await readFile(path.join(root,'worker/index.js'),'utf8')).replace("import {parseHostedStrokeArchive,readBounded} from './stroke-archive.js';",'')
+  .replace("import {PHONETIC_SYMBOLS} from '../src/phonetic.js';",'');
+const bundle=phonetic+'\n'+decoder+'\n'+handler+'\nexport default createHostedApp('+JSON.stringify(assets)+');\n';
 await mkdir(path.join(root,'dist/server'),{recursive:true});
 await mkdir(path.join(root,'dist/.openai'),{recursive:true});
 await writeFile(path.join(root,'dist/server/index.js'),bundle);

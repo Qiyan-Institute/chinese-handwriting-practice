@@ -3,12 +3,13 @@ import {
   MAX_CELLS_PER_GROUP, DEFAULT_TEXT, characters, newId, clamp,
   createPracticeRow, createCharacterBlock, createHeading, createTemplate,
   cellsForRow, cellCounts, charactersInBlocks, officialCredits, documentSettings, createProject, validateProject,
-} from './model.js?v=0.5.6';
-import {getStages, getGlyphUrl, safeImageUrl, importStrokeImages, officialLookupUrl, getAssetInfo, fetchOfficialStages} from './stroke-service.js';
+} from './model.js?v=0.6.0';
+import {getStages, getGlyphUrl, safeImageUrl, importStrokeImages, officialLookupUrl, getAssetInfo, fetchOfficialStages} from './stroke-service.js?v=0.6.0';
 import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.5.6';
 import {getPaperSize} from './paper.js';
 import {getGridStyle} from './grid-style.js?v=0.5.6';
-import {officialEmbedUrl} from './moe.js';
+import {officialEmbedUrl} from './moe.js?v=0.6.0';
+import {PHONETIC_SYMBOLS,PHONETIC_TEXT,isPhoneticSymbol} from './phonetic.js?v=0.6.0';
 import {DocumentHistory} from './history.js';
 import {updateWorksheetText} from './text-update.js';
 import {downloadWorksheetPdf, waitForImages} from './pdf-export.js?v=0.5.6';
@@ -110,11 +111,16 @@ function updateTextStatus() {
 }
 
 function applyTemplate(kind) {
-  const text=characters($('sourceText').value).join('');
+  const text=kind==='phonetic'?PHONETIC_TEXT:characters($('sourceText').value).join('');
   if(!text){showToast('請先輸入練習文字');return;}
   try { blocks = createTemplate(kind, text, documentOptions().gridSize);appliedText=text; }
   catch(error) { showToast(error.message); return; }
-  selectedId = blocks.find(block => block.type === 'practice')?.id || blocks[0]?.id || null;
+  if(kind==='phonetic') {
+    $('sourceText').value=text;
+    $('pageTitle').value='注音符號書寫練習';
+    activePage=0;
+  }
+  selectedId = blocks.find(block => block.type === 'practice'||(kind==='phonetic'&&block.type==='character'))?.id || blocks[0]?.id || null;
   saveLocal();
   render();
 }
@@ -150,9 +156,12 @@ function practiceHtml(block) {
   return `<div class="practice-line ${block.signature?'':'no-signature'}"><div class="practice-grid">${cellHtml}</div>${signatureHtml(block.signature)}</div>`;
 }
 
+function hasOfficialStroke(ch) {
+  return officialCharacters.has(ch)||isPhoneticSymbol(ch);
+}
+
 function ensureOfficialStrokes() {
-  if(!officialCharacters.size)return;
-  const missing=neededCharacters().filter(ch=>officialCharacters.has(ch)&&!getStages(ch,customAssets));
+  const missing=neededCharacters().filter(ch=>hasOfficialStroke(ch)&&!getStages(ch,customAssets));
   for(const ch of missing) {
     if(strokeRequests.size>=2)break;
     if(strokeRequests.has(ch)||strokeErrors.has(ch))continue;
@@ -197,7 +206,7 @@ function renderBlock({block, height, stageCount}) {
           `<div class="stagecount">${index+1}</div></div>`;
       }).join('')
       : `<div class="stroke-unavailable">${escapeHtml(strokeErrors.has(ch)?`「${ch}」官方字卡載入失敗，請按左側「重試缺字筆順」。`:
-        officialCharacters.has(ch)?`「${ch}」正在載入教育部逐筆原稿…`:
+        hasOfficialStroke(ch)?`「${ch}」正在載入教育部逐筆原稿…`:
         !officialCharacters.size?'正在核對官方字庫…':`「${ch}」未收錄於官方清單，可自行匯入筆順素材。`)}</div>`;
     content = `<div class="char-caption"><div class="char-head-glyph">${escapeHtml(ch)}</div>`+
       `<strong>${escapeHtml(ch)}</strong><span>逐筆示範 · ${steps?.length ? `${steps.length} 畫` : '待載入原稿'}</span></div>`+
@@ -235,7 +244,7 @@ function renderSheet() {
     const footer = `<div class="sheet-footer"><span>第 ${index + 1} / ${pages.length} 頁</span></div>`;
     return `<article class="sheet worksheet-page" ${paperAttributes} id="page-${index + 1}" data-page="${index}" aria-label="第 ${index + 1} 頁">${header}`+
       `<div class="sheet-body">${page.entries.map(renderBlock).join('')}</div>${footer}</article>`;
-  }).join('')+(credits.length?`<article class="sheet credits-page" ${paperAttributes} id="page-${previewPageCount}" aria-label="素材來源"><div class="source-body"><h2>素材來源</h2><p>本文件使用 ${credits.length} 個字的官方累積逐筆字卡。</p><dl><dt>著作權人</dt><dd>中華民國教育部</dd><dt>來源</dt><dd>國字標準字體筆順學習網<br><a href="https://stroke-order.learningweb.moe.edu.tw/">https://stroke-order.learningweb.moe.edu.tw/</a></dd><dt>授權</dt><dd>創用 CC 姓名標示－非商業性－禁止改作 3.0 臺灣版<br><a href="https://creativecommons.org/licenses/by-nc-nd/3.0/tw/">https://creativecommons.org/licenses/by-nc-nd/3.0/tw/</a></dd></dl><p>字卡保留官方原始 SVG 檔案內容。</p></div></article>`:'');
+  }).join('')+(credits.length?`<article class="sheet credits-page" ${paperAttributes} id="page-${previewPageCount}" aria-label="素材來源"><div class="source-body"><h2>素材來源</h2><p>本文件使用 ${credits.length} 個字形／注音符號的官方累積逐筆字卡。</p><dl><dt>著作權人</dt><dd>中華民國教育部</dd><dt>來源</dt><dd>國字標準字體筆順學習網<br><a href="https://stroke-order.learningweb.moe.edu.tw/">https://stroke-order.learningweb.moe.edu.tw/</a></dd><dt>授權</dt><dd>創用 CC 姓名標示－非商業性－禁止改作 3.0 臺灣版<br><a href="https://creativecommons.org/licenses/by-nc-nd/3.0/tw/">https://creativecommons.org/licenses/by-nc-nd/3.0/tw/</a></dd></dl><p>字卡保留官方原始 SVG 檔案內容。</p></div></article>`:'');
   $('pageStatus').textContent = `${pages.length} 頁練習${credits.length?' ＋ 1 頁素材來源':''} · ${grid.columns} 格 / 行${grid.rows>1?' · 每組 2 行':''}`;
   $('addTextRow').textContent=grid.rows>1?'＋ 加入描紅組':'＋ 加入描紅行';
   $('addBlankRow').textContent=grid.rows>1?'＋ 空白練習組':'＋ 空白練習行';
@@ -283,11 +292,13 @@ function renderAssetInfo() {
     ? `「${ch}」：${info.sourceName} · ${info.license}${info.attribution ? ` · ${info.attribution}` : ''}`
     : `「${ch || '？'}」尚無本地筆順素材。`;
   $('officialLookup').href = ch ? officialLookupUrl(ch) : 'https://stroke-order.learningweb.moe.edu.tw/searchW.jsp?ID2=1';
-  $('officialLookup').textContent = ch ? `到教育部查「${ch}」↗` : '前往教育部筆順網站 ↗';
+  const phonetic=isPhoneticSymbol(ch);
+  $('officialLookup').textContent = phonetic?`到教育部播放「${ch}」注音筆順 ↗`:ch ? `到教育部查「${ch}」↗` : '前往教育部筆順網站 ↗';
   const available = officialEmbedUrl(ch, officialCharacters);
+  $('showOfficial').hidden=phonetic;
   $('showOfficial').disabled = !available;
   $('officialStatus').textContent = officialCharacters.size
-    ? `官方索引 ${officialCharacters.size} 字 · ${available ? `可播放「${ch}」的原始動畫` : `未收錄「${ch || '？'}」的動畫`}` : officialIndexStatus;
+    ? `國字索引 ${officialCharacters.size} 字 · 注音 ${PHONETIC_SYMBOLS.length} 符號 · ${phonetic?'可由官網連結播放注音筆順':available ? `可播放「${ch}」的原始動畫` : `未收錄「${ch || '？'}」的動畫`}` : officialIndexStatus;
 }
 
 function bind(id, event, action) {
@@ -612,10 +623,12 @@ bind('addCharPractice','click',()=> {
 });
 
 for (const [id,template] of [
-  ['templateV1','v1'], ['templateV2','v2'], ['templateWord','word'], ['templateBlank','blank'],
+  ['templateV1','v1'], ['templateV2','v2'], ['templateWord','word'], ['templateBlank','blank'], ['templatePhonetic','phonetic'],
 ]) {
   bind(id,'click',()=> {
-    if (confirm('重新套用範本會重建區塊、灰度與手動字格；頁首設定保留。完成後可按「撤銷」恢復。是否繼續？')) {
+    const message=template==='phonetic'?'建立完整的 37 音注音字帖，取代現有文字、標題與編排；紙張、字格大小與姓名等欄位保留。可按「撤銷」恢復。是否繼續？':
+      '重新套用範本會重建區塊、灰度與手動字格；頁首設定保留。完成後可按「撤銷」恢復。是否繼續？';
+    if (confirm(message)) {
       applyTemplate(template);
     }
   });
@@ -657,10 +670,10 @@ async function exportWorksheet(kind) {
   button.textContent = '正在準備筆順及圖片…';
   try {
     await officialIndexReady;
-    if(!officialCharacters.size&&neededCharacters().some(ch=>!getStages(ch,customAssets)))throw new Error('官方字庫索引載入失敗，請重新整理後再匯出。');
+    if(!officialCharacters.size&&neededCharacters().some(ch=>!isPhoneticSymbol(ch)&&!getStages(ch,customAssets)))throw new Error('官方字庫索引載入失敗，請重新整理後再匯出。');
     ensureOfficialStrokes();
     while(strokeRequests.size)await Promise.all([...strokeRequests.values()]);
-    const missing=neededCharacters().filter(ch=>officialCharacters.has(ch)&&!getStages(ch,customAssets));
+    const missing=neededCharacters().filter(ch=>hasOfficialStroke(ch)&&!getStages(ch,customAssets));
     if(missing.length)throw new Error(`「${missing.join('、')}」筆順尚未載入，請先重試缺字筆順。`);
     await waitForImages($('sheet'));
     if (kind === 'pdf') {

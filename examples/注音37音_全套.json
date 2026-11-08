@@ -1,0 +1,397 @@
+{
+  "format": "hanzi-worksheet-studio-v2",
+  "updatedAt": "2026-11-08T06:02:54.939Z",
+  "sourceText": "ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦㄧㄨㄩ",
+  "blocks": [
+    {
+      "id": "7f0375f1-fc45-4e92-b0d8-91461f04940c",
+      "type": "heading",
+      "text": "注音符號全套（37音）",
+      "sub": "依教育部注音順序 · 逐筆、描紅與空白練習"
+    },
+    {
+      "id": "86943202-87f3-4a0d-843c-64c606dd39c7",
+      "type": "character",
+      "text": "ㄅ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "065c7823-40c4-42a1-b35a-ac7b4b4683e1",
+      "type": "character",
+      "text": "ㄆ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "6eb55b45-814c-4520-99ba-7fef5caf0695",
+      "type": "character",
+      "text": "ㄇ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "4f4936d1-d680-4ed5-a482-a3b32f6e54e5",
+      "type": "character",
+      "text": "ㄈ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "35b11e9e-d07e-411e-9ec3-1dbb8df9c58a",
+      "type": "character",
+      "text": "ㄉ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "c72a57be-1b1f-4c28-8643-d775cf28a6c3",
+      "type": "character",
+      "text": "ㄊ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "a135e707-8ef1-4303-9874-9a0bbafda204",
+      "type": "character",
+      "text": "ㄋ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "d9c99643-1f6b-439a-b3cc-bf0bbe697320",
+      "type": "character",
+      "text": "ㄌ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "b9e1f0aa-99a7-43e3-a52e-ab2bc02be3b9",
+      "type": "character",
+      "text": "ㄍ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "5048ffac-19bc-4104-9115-c81c1e43eaeb",
+      "type": "character",
+      "text": "ㄎ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "bc91ab29-dfff-4141-90a2-ed3c2bd5d6be",
+      "type": "character",
+      "text": "ㄏ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "a3d47fb4-89b8-429d-915c-226ca2b71ed8",
+      "type": "character",
+      "text": "ㄐ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "864c4315-0fcb-4748-8004-9a2f68bc29ac",
+      "type": "character",
+      "text": "ㄑ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "4d7e4ed4-402d-4bd8-b946-f320fdb1e9cd",
+      "type": "character",
+      "text": "ㄒ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "42422534-53de-45ac-b07e-f08981b85643",
+      "type": "character",
+      "text": "ㄓ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "f7e5a220-74a9-42c9-b833-0e1d291c5252",
+      "type": "character",
+      "text": "ㄔ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "91110f11-b1a4-4662-af6a-d50954fedd4b",
+      "type": "character",
+      "text": "ㄕ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "7da55546-9a58-48c9-ba0b-4e939b4ee1f2",
+      "type": "character",
+      "text": "ㄖ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "5524b5d8-a03a-4ee4-9fc1-a41e3b8eb1ac",
+      "type": "character",
+      "text": "ㄗ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "b0037541-f91b-4a7c-bd51-eaf01bb74880",
+      "type": "character",
+      "text": "ㄘ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "3345aa18-fd69-4185-a592-6ccae1860e6c",
+      "type": "character",
+      "text": "ㄙ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "904bd5a0-5300-44a4-ae40-f9ab9dec985a",
+      "type": "character",
+      "text": "ㄚ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "cb691747-595c-4ed7-8d5b-7b655e7330e2",
+      "type": "character",
+      "text": "ㄛ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "ac424ee4-9773-4dca-a3f2-ac4be22888eb",
+      "type": "character",
+      "text": "ㄜ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "7cc66a4f-c788-4749-a9d1-b439d1d91d63",
+      "type": "character",
+      "text": "ㄝ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "098d3b8b-85a2-4c16-a424-e39244ab3abe",
+      "type": "character",
+      "text": "ㄞ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "f0424dbe-61a7-4687-afe2-e15eb168593a",
+      "type": "character",
+      "text": "ㄟ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "ac1c0218-ea96-4eea-bd2f-ededb6d3cf13",
+      "type": "character",
+      "text": "ㄠ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "f0f28e99-ed9a-4d7c-9391-de5dc6e4b0ea",
+      "type": "character",
+      "text": "ㄡ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "800c5738-026e-4123-8737-0b40acc90212",
+      "type": "character",
+      "text": "ㄢ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "33046267-1812-4e05-a142-ff87da5a4fb3",
+      "type": "character",
+      "text": "ㄣ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "a3ad615f-67b6-4604-a732-b2cb6306ca7d",
+      "type": "character",
+      "text": "ㄤ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "980e72dd-9253-4032-a2b6-2bf531c63cd0",
+      "type": "character",
+      "text": "ㄥ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "0cee4725-f26c-40ea-a0cd-270b2ba7e6ec",
+      "type": "character",
+      "text": "ㄦ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "7a99cc33-75b7-4d34-a5d2-019286103c2e",
+      "type": "character",
+      "text": "ㄧ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "b76700fc-63b7-4d82-b223-67f0c77000ad",
+      "type": "character",
+      "text": "ㄨ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    },
+    {
+      "id": "10d8effa-11f1-4dc7-8a27-b6792b25baa2",
+      "type": "character",
+      "text": "ㄩ",
+      "count": 8,
+      "light1": 32,
+      "light2": 18,
+      "signature": false,
+      "label": ""
+    }
+  ],
+  "customAssets": {},
+  "assetMetadata": {},
+  "paperSize": "letter",
+  "gridSize": "medium",
+  "pageTitle": "注音符號書寫練習",
+  "showTitle": true,
+  "showName": false,
+  "showClass": false,
+  "showDate": false,
+  "pageLabel": "姓名",
+  "studentName": "",
+  "className": "",
+  "practiceDate": "",
+  "blankStyle": "grid"
+}

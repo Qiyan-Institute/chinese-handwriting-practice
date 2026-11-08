@@ -1,4 +1,5 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
+import {PHONETIC_SYMBOLS} from '../src/phonetic.js';
 import {inflateRawSync} from 'node:zlib';
 import https from 'node:https';
 
@@ -70,9 +71,10 @@ export function parseStrokeArchive(bytes,ch) {
 }
 
 export function createStrokeRepository(supported,fetcher=downloadCard) {
+  const allowed=new Set([...supported,...PHONETIC_SYMBOLS]);
   const cache=new Map(),pending=new Map();
   return async ch=>{
-    if(Array.from(ch||'').length!==1||!supported.has(ch))throw Object.assign(new Error('官方清單未收錄這個字'),{status:404});
+    if(Array.from(ch||'').length!==1||!allowed.has(ch))throw Object.assign(new Error('官方清單未收錄這個字'),{status:404});
     if(cache.has(ch))return cache.get(ch);
     if(pending.has(ch))return pending.get(ch);
     if(pending.size>=4)throw Object.assign(new Error('筆順下載中，請稍後重試'),{status:429});

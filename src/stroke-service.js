@@ -1,4 +1,5 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
+import {isPhoneticSymbol} from './phonetic.js?v=0.6.0';
 import { BUILTIN_STROKES } from './builtin-strokes.js';
 import { characters, validateProject } from './model.js';
 import { STROKE_API_BASE } from './runtime-config.js';
@@ -23,12 +24,13 @@ export function safeImageUrl(value) {
 }
 
 export function officialLookupUrl(ch) {
-  if (characters(ch).length !== 1) throw new Error('請輸入單一漢字');
-  return `https://stroke-order.learningweb.moe.edu.tw/searchW.jsp?WORD=${encodeURIComponent(ch)}`;
+  if (characters(ch).length !== 1) throw new Error('請輸入單一漢字或注音符號');
+  return isPhoneticSymbol(ch)?`https://stroke-order.learningweb.moe.edu.tw/dictView.jsp?ID=${ch.codePointAt(0)}`:
+    `https://stroke-order.learningweb.moe.edu.tw/searchW.jsp?WORD=${encodeURIComponent(ch)}`;
 }
 
 export function strokeApiUrl(ch,base=STROKE_API_BASE) {
-  if(characters(ch).length!==1)throw new Error('請輸入單一漢字');
+  if(characters(ch).length!==1)throw new Error('請輸入單一漢字或注音符號');
   return `${base.replace(/\/$/,'')}/api/moe/strokes?character=${encodeURIComponent(ch)}`;
 }
 
@@ -48,7 +50,7 @@ export function getAssetInfo(ch, userAssets = {}, metadata = {}) {
 }
 
 export async function importStrokeImages(ch, files) {
-  if (characters(ch).length !== 1) throw new Error('請輸入單一漢字');
+  if (characters(ch).length !== 1) throw new Error('請輸入單一漢字或注音符號');
   const ordered = Array.from(files || []).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
   if (!ordered.length || ordered.length > 64) throw new Error('請選擇 1–64 張圖片');
   const results=[];
