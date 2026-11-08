@@ -90,5 +90,41 @@ test('中型字格隨專案往返，切換樣式不新增或遺失手動字格',
   assert.equal(restored.gridSize,'medium');assert.equal(restored.paperSize,'letter');
   assert.equal(cellsForRow(restored.blocks[0]).length,12);
   assert.deepEqual(restored.blocks[0].manual,row.manual);
-  assert.deepEqual(cellCounts(restored.blocks[0]),{filled:1,blank:11});
+  assert.deepEqual(cellCounts(restored.blocks[0],'medium'),{filled:1,blank:15});
+  assert.equal(cellsForRow(restored.blocks[0],'medium').length,16);
+  assert(cellsForRow(restored.blocks[0],'medium').slice(12).every(cell=>cell.ch===''&&cell.opacity===0));
+});
+
+test('16 格手動資料完整往返 JSON，切換樣式只改變顯示容量',()=>{
+  const row=createPracticeRow('李宇晴',0);
+  row.manual=Array.from({length:16},(_,i)=>({ch:i===15?'霞':'',opacity:i===15?.5:0}));
+  row.count=16;
+  const restored=validateProject(JSON.parse(JSON.stringify({...createProject('李宇晴',[row]),gridSize:'medium'})));
+  assert.equal(restored.blocks[0].count,16);
+  assert.deepEqual(restored.blocks[0].manual,row.manual);
+  assert.deepEqual(cellCounts(restored.blocks[0],'medium'),{filled:1,blank:15});
+  assert.deepEqual(cellCounts(restored.blocks[0],'standard'),{filled:0,blank:12});
+  assert.deepEqual(cellsForRow(restored.blocks[0],'medium')[15],{ch:'霞',opacity:.5});
+  for(const length of [13,15,17])assert.throws(()=>validateProject({...restored,blocks:[{...row,manual:Array(length).fill({ch:'',opacity:0})}]}));
+});
+
+test('來源與缺字查詢包含中型第 16 格，其他樣式不計入未顯示的字',()=>{
+  const row=createPracticeRow('李',0);
+  row.manual=Array.from({length:16},(_,i)=>({ch:i===15?'霞':'',opacity:i===15?1:0}));
+  const metadata={'霞':{sourceName:'中華民國教育部'}};
+  assert.deepEqual(officialCredits([row],metadata,'medium'),['霞']);
+  assert.deepEqual(officialCredits([row],metadata,'standard'),[]);
+  assert.deepEqual(officialCredits([row],metadata,'large'),[]);
+});
+
+test('中型第一版填滿 16 格、第二版為 8 格描紅與 8 格空白',()=>{
+  for(const [template,filled] of [['v1',16],['v2',8]]) {
+    const rows=createTemplate(template,'孫中山','medium').filter(block=>block.type==='practice');
+    for(const row of rows) {
+      const cells=cellsForRow(row,'medium');
+      assert.equal(cells.length,16);
+      assert.deepEqual(cellCounts(row,'medium'),{filled,blank:16-filled});
+      assert(cells.slice(filled).every(cell=>!cell.ch&&cell.opacity===0));
+    }
+  }
 });

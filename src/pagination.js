@@ -1,6 +1,6 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import {getPaperSize} from './paper.js';
-import {getGridStyle} from './grid-style.js?v=0.5.5';
+import {getGridStyle} from './grid-style.js?v=0.5.6';
 // Keep A4 defaults for existing callers; selected paper controls the page height.
 export const PAGE = Object.freeze({
   width:getPaperSize('a4').width, height:getPaperSize('a4').height,

@@ -1,17 +1,17 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import {
-  CELLS_PER_ROW, DEFAULT_TEXT, characters, newId, clamp,
+  MAX_CELLS_PER_GROUP, DEFAULT_TEXT, characters, newId, clamp,
   createPracticeRow, createCharacterBlock, createHeading, createTemplate,
   cellsForRow, cellCounts, charactersInBlocks, officialCredits, documentSettings, createProject, validateProject,
-} from './model.js?v=0.5.5';
+} from './model.js?v=0.5.6';
 import {getStages, getGlyphUrl, safeImageUrl, importStrokeImages, officialLookupUrl, getAssetInfo, fetchOfficialStages} from './stroke-service.js';
-import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.5.5';
+import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.5.6';
 import {getPaperSize} from './paper.js';
-import {getGridStyle} from './grid-style.js?v=0.5.5';
+import {getGridStyle} from './grid-style.js?v=0.5.6';
 import {officialEmbedUrl} from './moe.js';
 import {DocumentHistory} from './history.js';
 import {updateWorksheetText} from './text-update.js';
-import {downloadWorksheetPdf, waitForImages} from './pdf-export.js?v=0.5.5';
+import {downloadWorksheetPdf, waitForImages} from './pdf-export.js?v=0.5.6';
 
 // 編輯和排版都在本機執行；缺字由本機服務向教育部請求字卡。
 const $ = id => document.getElementById(id);
@@ -112,7 +112,7 @@ function updateTextStatus() {
 function applyTemplate(kind) {
   const text=characters($('sourceText').value).join('');
   if(!text){showToast('請先輸入練習文字');return;}
-  try { blocks = createTemplate(kind, text);appliedText=text; }
+  try { blocks = createTemplate(kind, text, documentOptions().gridSize);appliedText=text; }
   catch(error) { showToast(error.message); return; }
   selectedId = blocks.find(block => block.type === 'practice')?.id || blocks[0]?.id || null;
   saveLocal();
@@ -134,7 +134,7 @@ function signatureHtml(show) {
 }
 
 function neededCharacters() {
-  return charactersInBlocks(blocks);
+  return charactersInBlocks(blocks,documentOptions().gridSize);
 }
 
 // Simple vector lines avoid expensive repeated gradient masks in print/PDF.
@@ -142,7 +142,7 @@ const gridLines = '<svg class="grid-lines" xmlns="http://www.w3.org/2000/svg" vi
 
 function practiceHtml(block) {
   const blankStyle=$('blankStyle').value;
-  const cells=cellsForRow(block);
+  const cells=cellsForRow(block,documentOptions().gridSize);
   const cellHtml=cells.map((cell,index)=>{
     const blank=!cell.ch;
     return `<div class="grid-bg ${blank&&blankStyle==='space'?'blank-space':''}" data-cell-block="${escapeHtml(block.id)}" data-cell-index="${index}" data-cell-state="${blank?'blank':'filled'}" draggable="${!blank}" title="第 ${index+1} 格：${escapeHtml(cell.ch||'空白')}">${gridLines}${glyphHtml(cell.ch,cell.opacity)}</div>`;
@@ -228,7 +228,7 @@ function renderSheet() {
   const headerHeight=(hasTitle?71:0)+(meta.length?24:0);
   const header=headerHeight?`<div class="sheet-header" style="height:${headerHeight}px">${hasTitle?`<div class="sheet-title"><span>${escapeHtml(opts.pageTitle)}</span></div>`:''}${meta.length?`<div class="sheet-meta">${meta.map(text=>`<span>${text}</span>`).join('')}</div>`:''}</div>`:'';
   pages = paginate(blocks, block => getStages(characters(block.text)[0], customAssets)?.length || 0,headerHeight,paper.id,grid.id);
-  const credits=officialCredits(blocks,assetMetadata);
+  const credits=officialCredits(blocks,assetMetadata,opts.gridSize);
   previewPageCount=pages.length+(credits.length?1:0);
   activePage = Math.min(activePage, previewPageCount - 1);
   $('sheet').innerHTML = pages.map((page, index) => {
@@ -302,20 +302,21 @@ function renderInspector() {
   }
   const grid=getGridStyle(documentOptions().gridSize);
   const multiline=grid.rows>1;
+  const displayCount=Math.min(block.count??0,grid.capacity);
   const typeName = {heading:'分組標題', character:'單字逐筆', practice:multiline?`${grid.label}練習組 · 2 行`:'12 格練習行'}[block.type];
   let html = `<div class="inspector-type">${typeName}</div>`+
     `<label class="field">${block.type === 'heading' ? '標題' : block.type === 'character' ? '單字' : '練習文字'}</label>`+
     `<input class="field-input" id="insText" value="${escapeHtml(block.text)}">`+
     `<div class="help">${block.type === 'character' ? '只顯示已取得來源的真正逐筆素材。' :
-      block.type === 'practice' ? multiline?`每組 12 格，分成 ${grid.columns}＋${12-grid.columns} 格兩行。`:'文字自動重複排列在 12 個米字格中。' : ''}</div>`;
+      block.type === 'practice' ? multiline?`每組 ${grid.capacity} 格，分成 ${grid.columns}＋${grid.capacity-grid.columns} 格兩行。`:'文字自動重複排列在 12 個米字格中。' : ''}</div>`;
 
   if (block.type === 'heading') {
     html += `<label class="field">副標題</label><input class="field-input" id="insSub" value="${escapeHtml(block.sub || '')}">`;
   } else {
-    html += `<div class="cell-summary" id="cellSummary" role="status"></div><label class="field">自動填字格數 <span id="countValue">${block.count}</span> / 12</label>`+
-      `<input type="range" id="insCount" min="0" max="12" value="${block.count}" class="range">`+
+    html += `<div class="cell-summary" id="cellSummary" role="status"></div><label class="field">自動填字格數 <span id="countValue">${displayCount}</span> / ${grid.capacity}</label>`+
+      `<input type="range" id="insCount" min="0" max="${grid.capacity}" value="${displayCount}" class="range">`+
       `<div class="help">空白格內不放文字或字圖；格線樣式可在左側設定。</div>`+
-      `<button id="clearRow" class="mini" style="width:100%;margin-top:8px">${multiline?'清空本組 12 格':'清空本行 12 格'}</button>`;
+      `<button id="clearRow" class="mini" style="width:100%;margin-top:8px">${multiline?`清空本組 ${grid.capacity} 格`:'清空本行 12 格'}</button>`;
     {
       html += `<label class="field">第一組灰度 <span id="light1Value">${block.light1}%</span></label>`+
         `<input type="range" id="insLight1" min="5" max="90" value="${block.light1}" class="range">`+
@@ -399,8 +400,9 @@ function renderInspector() {
 function updateCellSummary() {
   const block=blocks.find(item=>item.id===selectedId);
   if(!$('cellSummary')||!block||block.type==='heading')return;
-  const {filled,blank}=cellCounts(block);
-  $('cellSummary').textContent=`已填 ${filled} 格 · 空白 ${blank} 格（共 12 格）`;
+  const grid=getGridStyle(documentOptions().gridSize);
+  const {filled,blank}=cellCounts(block,grid.id);
+  $('cellSummary').textContent=`已填 ${filled} 格 · 空白 ${blank} 格（共 ${grid.capacity} 格）`;
 }
 
 function render() {
@@ -428,12 +430,17 @@ function moveBlock(id, diff) {
 
 function setCell(rowId, index, ch, source=null) {
   const target = blocks.find(b => b.id === rowId);
-  if (!target || target.type === 'heading' || index < 0 || index >= CELLS_PER_ROW) return;
-  const cells = cellsForRow(target);
+  const gridSize=documentOptions().gridSize;
+  const capacity=getGridStyle(gridSize).capacity;
+  if (!target || target.type === 'heading' || index < 0 || index >= capacity) return;
+  // Editing a 12-cell preset must preserve any saved extra cells from medium.
+  const editableCells=block=>cellsForRow(block,
+    block.manual?.length===MAX_CELLS_PER_GROUP||block.count>12?'medium':gridSize);
+  const cells = editableCells(target);
   if (source) {
     const sourceBlock = blocks.find(b => b.id === source.id && b.type !== 'heading');
-    if (sourceBlock && source.index >= 0 && source.index < CELLS_PER_ROW) {
-      const sourceCells = sourceBlock.id === rowId ? cells : cellsForRow(sourceBlock);
+    if (sourceBlock && source.index >= 0 && source.index < capacity) {
+      const sourceCells = sourceBlock.id === rowId ? cells : editableCells(sourceBlock);
       const moved = sourceCells[source.index];
       sourceCells[source.index] = {ch:'',opacity:0};
       if (sourceBlock.id !== rowId) sourceBlock.manual = sourceCells;
@@ -527,7 +534,7 @@ $('sheet').addEventListener('dragstart',event => {
     const detail={id:cell.dataset.cellBlock,index:Number(cell.dataset.cellIndex)};
     event.dataTransfer.setData('application/x-hanzi-cell',JSON.stringify(detail));
     const block=blocks.find(b => b.id === detail.id);
-    event.dataTransfer.setData('text/plain',cellsForRow(block)[detail.index].ch);
+    event.dataTransfer.setData('text/plain',cellsForRow(block,documentOptions().gridSize)[detail.index].ch);
     event.dataTransfer.effectAllowed='move';
     return;
   }

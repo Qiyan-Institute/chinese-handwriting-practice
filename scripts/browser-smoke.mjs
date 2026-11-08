@@ -483,7 +483,7 @@ try {
   assert(await evaluate(`(()=>{
     const grid=document.querySelector('[data-block="large-manual"] .practice-grid');
     const first=grid.children[0].getBoundingClientRect(),lastTop=grid.children[7].getBoundingClientRect(),bottom=grid.children[8].getBoundingClientRect();
-    return grid.children.length===12&&Math.abs(first.width-76.25)<.1&&Math.abs(first.height-first.width)<.1&&
+    return grid.children.length===16&&Math.abs(first.width-76.25)<.1&&Math.abs(first.height-first.width)<.1&&
       Math.abs(lastTop.top-first.top)<.1&&Math.abs(bottom.top-first.bottom)<.1&&Math.abs(bottom.left-first.left)<.1&&
       Math.abs(grid.getBoundingClientRect().height-152.5)<.1;
   })()`));
@@ -491,13 +491,43 @@ try {
   await click('#undoBtn');assert.equal(await evaluate("document.getElementById('gridSize').value"),'large');
   await click('#redoBtn');assert.equal(await evaluate("document.getElementById('gridSize').value"),'medium');
   await click('[data-block="large-manual"] [data-cell-index="8"]');
-  assert(await evaluate("document.getElementById('inspector').textContent.includes('8＋4') && document.getElementById('clearRow').textContent.includes('本組')"));
+  assert(await evaluate("document.getElementById('inspector').textContent.includes('8＋8') && document.getElementById('clearRow').textContent.includes('本組')"));
+  assert(await evaluate("[...document.querySelector('[data-block=\"large-manual\"] .practice-grid').children].slice(12).every(cell=>cell.dataset.cellState==='blank'&&!cell.querySelector('.cell-character')&&cell.querySelector('.grid-lines'))"));
+  assert.equal(await evaluate("document.getElementById('insCount').max"),'16');
+  await click('[data-glyph="中"]');
+  const lastMedium='[data-block="large-manual"] [data-cell-index="15"]';
+  await click(lastMedium);
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lastMedium)}).dataset.cellState`),'filled');
+  await evaluate(`(()=>{const source=document.querySelector(${JSON.stringify(lastMedium)}),target=document.querySelector('[data-block="large-manual"] [data-cell-index="14"]'),dt=new DataTransfer();source.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:dt}));target.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt}))})()`);
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lastMedium)}).dataset.cellState`),'blank');
+  assert.equal(await evaluate("document.querySelector('[data-block=\"large-manual\"] [data-cell-index=\"14\"]').dataset.cellState"),'filled');
+  await click('#undoBtn');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lastMedium)}).dataset.cellState`),'filled');
+  await input('#gridSize','standard','change');
+  assert.equal(await evaluate("document.querySelector('[data-block=\"large-manual\"] .practice-grid').children.length"),12);
+  await evaluate("document.querySelector('[data-block=\"large-manual\"] [data-cell-index=\"0\"]').dispatchEvent(new MouseEvent('click',{bubbles:true,shiftKey:true}))");
+  await input('#gridSize','medium','change');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lastMedium)}).dataset.cellState`),'filled');
+  assert.equal(await evaluate("document.querySelector('[data-block=\"large-manual\"] [data-cell-index=\"0\"]').dataset.cellState"),'blank');
+  passed.push('中型補滿 8×2、共 16 格，新格可填字／拖動／撤銷，切換其他樣式編輯後仍保留第 16 格');
   await click('#downloadProject');
   const mediumJson=await waitFor(async ()=>(await readdir(output)).find(name=>name.includes('中型驗證')&&name.endsWith('.json')),'中型 JSON');
   assert.equal(JSON.parse(await readFile(path.join(output,mediumJson),'utf8')).gridSize,'medium');
   await input('#gridSize','standard','change');await setFiles('#loadJson',[path.join(output,mediumJson)]);
   await waitFor(()=>evaluate("document.getElementById('gridSize').value==='medium'"),'中型 JSON 還原');
-  passed.push('中型字格約 2.0 cm、方形米字格、8＋4 兩行，原有 12 格與撤銷及 JSON 均正常');
+  passed.push('中型字格約 2.0 cm、8＋8 兩行，原有編排與新增格均隨 JSON 保存');
+  assert.equal(await evaluate("JSON.parse(localStorage.getItem('hanzi-worksheet-studio')).blocks.find(block=>block.id==='large-manual').manual.length"),16);
+  await input('#cellMode','select','change');await click(lastMedium);
+  await input('#insCount','16');
+  assert(await evaluate("document.getElementById('cellSummary').textContent.includes('已填 16 格')&&document.querySelectorAll('[data-block=\"large-manual\"] [data-cell-state=\"filled\"]').length===16"));
+  await click('#undoBtn');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lastMedium)}).dataset.cellState`),'filled');
+  await click(lastMedium);
+  await click('#clearRow');
+  assert(await evaluate("document.querySelectorAll('[data-block=\"large-manual\"] [data-cell-state=\"blank\"]').length===16&&document.getElementById('cellSummary').textContent.includes('空白 16 格')"));
+  await click('#undoBtn');
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(lastMedium)}).dataset.cellState`),'filled');
+  passed.push('中型描紅上限及清空均涵蓋 16 格，撤銷恢復完整手動資料');
   const mediumPages=await evaluate("document.querySelectorAll('.sheet').length");
   const nativeMedium=await cdp('Page.printToPDF',{printBackground:true,preferCSSPageSize:true,displayHeaderFooter:false});
   const nativeMediumBytes=Buffer.from(nativeMedium.data,'base64');

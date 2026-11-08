@@ -3,9 +3,10 @@
  * 版型與文字資料模型。純函式，不讀寫 DOM，方便測試、替換 UI。
  */
 import {getPaperSize} from './paper.js';
-import {getGridStyle} from './grid-style.js?v=0.5.5';
+import {getGridStyle} from './grid-style.js?v=0.5.6';
 
 export const CELLS_PER_ROW = 12;
+export const MAX_CELLS_PER_GROUP = 16;
 export const FORMAT = 'hanzi-worksheet-studio-v2';
 export const DEFAULT_TEXT = '孫中山';
 export const DEFAULT_TITLE = '正體字書寫練習';
@@ -40,10 +41,10 @@ export function clamp(value, min, max) {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
 }
 
-export function createPracticeRow(text = DEFAULT_TEXT, count = 6) {
+export function createPracticeRow(text = DEFAULT_TEXT, count = 6, gridSize = 'standard') {
   return {
     id: newId(), type: 'practice', text: text || DEFAULT_TEXT,
-    count: Math.trunc(clamp(count, 0, CELLS_PER_ROW)),
+    count: Math.trunc(clamp(count, 0, getGridStyle(gridSize).capacity)),
     light1: 27, light2: 16,
     signature: false, label: '', manual: null,
   };
@@ -61,9 +62,10 @@ export function createHeading(text) {
   return { id: newId(), type: 'heading', text, sub: '可自訂描紅及空白格比例' };
 }
 
-export function createTemplate(kind, input = DEFAULT_TEXT) {
+export function createTemplate(kind, input = DEFAULT_TEXT, gridSize = 'standard') {
   const text = characters(input).join('') || DEFAULT_TEXT;
   const glyphs = characters(text);
+  const capacity=getGridStyle(gridSize).capacity;
   if (glyphs.length > 240) throw new Error('單次範本最多 240 字，請拆成多個專案');
   if (kind === 'blank') {
     return [createHeading('自由書寫練習'), ...Array.from({length: 12}, () => createPracticeRow(text, 0))];
@@ -73,12 +75,12 @@ export function createTemplate(kind, input = DEFAULT_TEXT) {
       createHeading('生字逐筆與書寫'),
       ...glyphs.map(createCharacterBlock),
       createHeading('詞語連寫練習'),
-      ...Array.from({length: 4}, (_, i) => createPracticeRow(text, i < 2 ? 6 : 3)),
+      ...Array.from({length: 4}, (_, i) => createPracticeRow(text, i < 2 ? capacity/2 : capacity/4, gridSize)),
     ];
   }
   if (kind === 'v1' || kind === 'v2') {
     const rows = Array.from({length: 9}, (_, i) => {
-      const row = createPracticeRow(text, kind === 'v1' ? 12 : 6);
+      const row = createPracticeRow(text, kind === 'v1' ? capacity : capacity/2, gridSize);
       // 全描紅版：首兩行略深，後七行稍淺。第二版：一律半行淡灰。
       row.light1 = kind === 'v1' && i < 2 ? 34 : 26;
       row.light2 = kind === 'v1' && i < 2 ? 18 : 15;
@@ -99,13 +101,16 @@ function normalizeCell(cell) {
   return ch&&opacity>0?{ch,opacity}:{ch:'',opacity:0};
 }
 
-export function cellsForRow(block) {
-  if (Array.isArray(block.manual) && block.manual.length === CELLS_PER_ROW) {
-    return block.manual.map(normalizeCell);
+export function cellsForRow(block, gridSize = 'standard') {
+  const capacity=getGridStyle(gridSize).capacity;
+  if (Array.isArray(block.manual) && [CELLS_PER_ROW,MAX_CELLS_PER_GROUP].includes(block.manual.length)) {
+    // Legacy 12-cell layouts gain four empty cells. Keep stored 16-cell layouts
+    // intact when another preset displays only their first twelve cells.
+    return Array.from({length:capacity},(_,index)=>normalizeCell(block.manual[index]));
   }
   const chars = block.type==='character'?characters(block.text).slice(0,1):characters(block.text);
-  const count = Math.trunc(clamp(block.count, 0, CELLS_PER_ROW));
-  return Array.from({length: CELLS_PER_ROW}, (_, index) => {
+  const count = Math.trunc(clamp(block.count, 0, capacity));
+  return Array.from({length: capacity}, (_, index) => {
     if (index >= count || !chars.length) return {ch:'', opacity:0};
     const ch = chars[index % chars.length];
     const opacity = block.type==='character'&&index===0?1:
@@ -114,19 +119,20 @@ export function cellsForRow(block) {
   });
 }
 
-export function cellCounts(block) {
-  const filled=cellsForRow(block).filter(cell=>cell.ch&&cell.opacity>0).length;
-  return {filled,blank:CELLS_PER_ROW-filled};
+export function cellCounts(block, gridSize = 'standard') {
+  const cells=cellsForRow(block,gridSize);
+  const filled=cells.filter(cell=>cell.ch&&cell.opacity>0).length;
+  return {filled,blank:cells.length-filled};
 }
 
-export function charactersInBlocks(blocks) {
+export function charactersInBlocks(blocks, gridSize = 'standard') {
   return [...new Set(blocks.flatMap(block=>block.type==='heading'?[]:
     [...(block.type==='character'?characters(block.text).slice(0,1):[]),
-      ...cellsForRow(block).flatMap(cell=>characters(cell.ch))]))];
+      ...cellsForRow(block,gridSize).flatMap(cell=>characters(cell.ch))]))];
 }
 
-export function officialCredits(blocks,metadata={}) {
-  return charactersInBlocks(blocks).filter(ch=>metadata[ch]?.sourceName==='中華民國教育部');
+export function officialCredits(blocks,metadata={},gridSize='standard') {
+  return charactersInBlocks(blocks,gridSize).filter(ch=>metadata[ch]?.sourceName==='中華民國教育部');
 }
 
 export function createProject(sourceText, blocks, customAssets = {}, assetMetadata = {}) {
@@ -157,11 +163,11 @@ export function validateProject(data) {
     b.pageBreakBefore = b.pageBreakBefore === true;
     b.signature = b.signature !== false;
     if (b.type === 'practice' || b.type === 'character') {
-      b.count = Math.trunc(clamp(b.count, 0, CELLS_PER_ROW));
+      b.count = Math.trunc(clamp(b.count, 0, MAX_CELLS_PER_GROUP));
       b.light1 = clamp(b.light1 ?? 27, 0, 100);
       b.light2 = clamp(b.light2 ?? 16, 0, 100);
       if (b.manual) {
-        if (!Array.isArray(b.manual) || b.manual.length !== CELLS_PER_ROW) throw new Error('手工字格數量應為 12');
+        if (!Array.isArray(b.manual) || ![CELLS_PER_ROW,MAX_CELLS_PER_GROUP].includes(b.manual.length)) throw new Error('手工字格數量應為 12 或 16');
         b.manual = b.manual.map(normalizeCell);
       }
     }
