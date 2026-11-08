@@ -99,3 +99,5 @@ button:disabled{opacity:.4;cursor:default}
 }
 
 .template-row #templatePhonetic,.template-row #templatePhoneticTracing{grid-column:1/-1}
+
+.grid-count-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}.grid-count-controls button{white-space:nowrap}

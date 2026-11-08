@@ -4,7 +4,7 @@
  */
 import {getPaperSize} from './paper.js';
 import {PHONETIC_SYMBOLS,PHONETIC_TEXT} from './phonetic.js?v=0.6.0';
-import {getGridStyle,getSymbolGridStyle,MAX_SYMBOL_CELLS} from './grid-style.js?v=0.6.1';
+import {getGridStyle,getSymbolGridStyle,getSizedGridStyle,MAX_SYMBOL_CELLS,MAX_GRID_CELLS} from './grid-style.js?v=0.6.2';
 
 export const CELLS_PER_ROW = 12;
 export const MAX_CELLS_PER_GROUP = 16;
@@ -64,7 +64,24 @@ export function createHeading(text) {
 }
 
 export function gridForBlock(block,gridSize='standard') {
+  if(block.cellCount!=null)return getSizedGridStyle(block.cellCount,gridSize);
   return block.type==='symbol-grid'?getSymbolGridStyle(characters(block.text).length,gridSize):getGridStyle(gridSize);
+}
+
+export function requestedCellCount(block,gridSize='standard') {
+  return block.cellCount??(block.type==='symbol-grid'?Math.max(1,characters(block.text).length):getGridStyle(gridSize).capacity);
+}
+
+export function withCellCount(block,value) {
+  const cellCount=Number(value);
+  if(!Number.isInteger(cellCount)||cellCount<1||cellCount>MAX_GRID_CELLS)throw new Error(`請輸入 1 至 ${MAX_GRID_CELLS} 的整數格數`);
+  return {...block,cellCount};
+}
+
+export function createPracticeGrid(text,cellCount,filledCount=cellCount) {
+  const block=withCellCount(createPracticeRow(text),cellCount);
+  block.count=Math.trunc(clamp(filledCount,0,block.cellCount));
+  return block;
 }
 
 export function createTemplate(kind, input = DEFAULT_TEXT, gridSize = 'standard') {
@@ -118,17 +135,19 @@ function normalizeCell(cell) {
 
 export function cellsForRow(block, gridSize = 'standard', {includeHidden=false}={}) {
   const symbolGrid=block.type==='symbol-grid';
+  const custom=block.cellCount!=null;
   const allowedManual=symbolGrid?[MAX_SYMBOL_CELLS]:[CELLS_PER_ROW,MAX_CELLS_PER_GROUP];
   let capacity=gridForBlock(block,gridSize).capacity;
-  if(includeHidden)capacity=symbolGrid?MAX_SYMBOL_CELLS:
+  if(includeHidden)capacity=custom?Math.max(capacity,block.manual?.length||0,block.count||0):symbolGrid?MAX_SYMBOL_CELLS:
     Math.max(capacity,block.manual?.length||0,block.count>CELLS_PER_ROW?MAX_CELLS_PER_GROUP:0);
-  if (Array.isArray(block.manual) && allowedManual.includes(block.manual.length)) {
+  if (Array.isArray(block.manual) && (custom?block.manual.length>0&&block.manual.length<=MAX_GRID_CELLS:allowedManual.includes(block.manual.length))) {
     // Legacy 12-cell layouts gain four empty cells. Keep stored 16-cell layouts
     // intact when another preset displays only their first twelve cells.
     return Array.from({length:capacity},(_,index)=>normalizeCell(block.manual[index]));
   }
   const chars = block.type==='character'?characters(block.text).slice(0,1):characters(block.text);
-  const count = Math.trunc(clamp(block.count, 0, symbolGrid?Math.min(capacity,chars.length):capacity));
+  const fillLimit=custom&&!includeHidden?requestedCellCount(block,gridSize):capacity;
+  const count = Math.trunc(clamp(block.count, 0, symbolGrid?Math.min(fillLimit,chars.length):fillLimit));
   return Array.from({length: capacity}, (_, index) => {
     if (index >= count || !chars.length) return {ch:'', opacity:0};
     const ch = chars[index % chars.length];
@@ -184,12 +203,14 @@ export function validateProject(data) {
     b.signature = b.signature !== false;
     if (b.type === 'practice' || b.type === 'character' || b.type === 'symbol-grid') {
       const symbolGrid=b.type==='symbol-grid';
-      b.count = Math.trunc(clamp(b.count, 0, symbolGrid?MAX_SYMBOL_CELLS:MAX_CELLS_PER_GROUP));
+      const custom=b.cellCount!=null;
+      if(custom)b.cellCount=Math.trunc(clamp(b.cellCount,1,MAX_GRID_CELLS));
+      b.count = Math.trunc(clamp(b.count, 0, custom?MAX_GRID_CELLS:symbolGrid?MAX_SYMBOL_CELLS:MAX_CELLS_PER_GROUP));
       b.light1 = clamp(b.light1 ?? 27, 0, 100);
       b.light2 = clamp(b.light2 ?? 16, 0, 100);
       if (b.manual) {
         const allowedManual=symbolGrid?[MAX_SYMBOL_CELLS]:[CELLS_PER_ROW,MAX_CELLS_PER_GROUP];
-        if (!Array.isArray(b.manual) || !allowedManual.includes(b.manual.length)) throw new Error('手工字格數量與區塊類型不符');
+        if (!Array.isArray(b.manual) || !(custom?b.manual.length>0&&b.manual.length<=MAX_GRID_CELLS:allowedManual.includes(b.manual.length))) throw new Error('手工字格數量與區塊類型不符');
         b.manual = b.manual.map(normalizeCell);
       }
     }

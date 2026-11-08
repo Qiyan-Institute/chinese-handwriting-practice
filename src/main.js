@@ -1,17 +1,17 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
 import {
   DEFAULT_TEXT, characters, newId, clamp,
-  createPracticeRow, createCharacterBlock, createHeading, createTemplate,
+  createPracticeRow, createPracticeGrid, withCellCount, requestedCellCount, createCharacterBlock, createHeading, createTemplate,
   gridForBlock, cellsForRow, cellCounts, charactersInBlocks, officialCredits, documentSettings, createProject, validateProject,
-} from './model.js?v=0.6.1';
+} from './model.js?v=0.6.2';
 import {getStages, getGlyphUrl, safeImageUrl, importStrokeImages, officialLookupUrl, getAssetInfo, fetchOfficialStages} from './stroke-service.js?v=0.6.0';
-import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.6.1';
+import {paginate, moveBlockToPage, PAGE} from './pagination.js?v=0.6.2';
 import {getPaperSize} from './paper.js';
-import {getGridStyle} from './grid-style.js?v=0.6.1';
+import {getGridStyle} from './grid-style.js?v=0.6.2';
 import {officialEmbedUrl} from './moe.js?v=0.6.0';
 import {PHONETIC_SYMBOLS,PHONETIC_TEXT,isPhoneticSymbol} from './phonetic.js?v=0.6.0';
 import {DocumentHistory} from './history.js';
-import {updateWorksheetText} from './text-update.js?v=0.6.1';
+import {updateWorksheetText} from './text-update.js?v=0.6.2';
 import {downloadWorksheetPdf, waitForImages} from './pdf-export.js?v=0.5.6';
 
 // 編輯和排版都在本機執行；缺字由本機服務向教育部請求字卡。
@@ -39,6 +39,7 @@ let toastTimer;
 let appliedText=DEFAULT_TEXT;
 let history=null;
 let projectEpoch=0;
+let gridIncrement=1;
 
 function showToast(message) {
   const t = $('toast');
@@ -118,6 +119,7 @@ function applyTemplate(kind) {
   catch(error) { showToast(error.message); return; }
   if(phoneticTemplate) {
     $('sourceText').value=text;
+    $('newGridCount').value=37;
     $('pageTitle').value=kind==='phonetic-tracing'?'注音全描紅（37音）':'注音符號書寫練習';
     activePage=0;
   }
@@ -147,16 +149,19 @@ function neededCharacters() {
 // Simple vector lines avoid expensive repeated gradient masks in print/PDF.
 const gridLines = '<svg class="grid-lines" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M50 0V100M0 50H100M0 0L100 100M100 0L0 100" fill="none" stroke="#f6ced0" stroke-width="1"/></svg>';
 
-function practiceHtml(block) {
+function practiceHtml(block,{cellStart=0,cellEnd,gridRows}={}) {
   const blankStyle=$('blankStyle').value;
   const gridSize=documentOptions().gridSize;
   const grid=gridForBlock(block,gridSize);
-  const cells=cellsForRow(block,gridSize);
-  const cellHtml=cells.map((cell,index)=>{
+  const cells=cellsForRow(block,gridSize).slice(cellStart,cellEnd);
+  const gridHeight=gridRows==null?grid.gridHeight:gridRows*grid.cellSize;
+  const lineHeight=gridRows==null?grid.lineHeight:Math.ceil(gridHeight)+2;
+  const cellHtml=cells.map((cell,offset)=>{
+    const index=cellStart+offset;
     const blank=!cell.ch;
     return `<div class="grid-bg ${blank&&blankStyle==='space'?'blank-space':''}" data-cell-block="${escapeHtml(block.id)}" data-cell-index="${index}" data-cell-state="${blank?'blank':'filled'}" draggable="${!blank}" title="第 ${index+1} 格：${escapeHtml(cell.ch||'空白')}">${gridLines}${glyphHtml(cell.ch,cell.opacity)}</div>`;
   }).join('');
-  return `<div style="--grid-height:${grid.gridHeight}px;--practice-line-height:${grid.lineHeight}px" class="practice-line ${block.signature?'':'no-signature'}"><div class="practice-grid">${cellHtml}</div>${signatureHtml(block.signature)}</div>`;
+  return `<div style="--grid-height:${gridHeight}px;--practice-line-height:${lineHeight}px" class="practice-line ${block.signature?'':'no-signature'}"><div class="practice-grid">${cellHtml}</div>${signatureHtml(block.signature)}</div>`;
 }
 
 function hasOfficialStroke(ch) {
@@ -189,7 +194,8 @@ function ensureOfficialStrokes() {
   $('retryStrokes').hidden=!failed.length;
 }
 
-function renderBlock({block, height, stageCount}) {
+function renderBlock(entry) {
+  const {block,height,stageCount,continuation=false}=entry;
   const selected = block.id === selectedId ? 'selected' : '';
   let content = '';
 
@@ -212,17 +218,17 @@ function renderBlock({block, height, stageCount}) {
         hasOfficialStroke(ch)?`「${ch}」正在載入教育部逐筆原稿…`:
         !officialCharacters.size?'正在核對官方字庫…':`「${ch}」未收錄於官方清單，可自行匯入筆順素材。`)}</div>`;
     content = `<div class="char-caption"><div class="char-head-glyph">${escapeHtml(ch)}</div>`+
-      `<strong>${escapeHtml(ch)}</strong><span>逐筆示範 · ${steps?.length ? `${steps.length} 畫` : '待載入原稿'}</span></div>`+
-      `<div class="stroke-line"><span class="mini-label">楷體逐筆</span><div class="stroke-cells">${stageHtml}</div></div>`+
-      practiceHtml(block);
+      `<strong>${escapeHtml(ch)}</strong><span>${continuation?'書寫練習（續）':`逐筆示範 · ${steps?.length ? `${steps.length} 畫` : '待載入原稿'}`}</span></div>`+
+      (continuation?'':`<div class="stroke-line"><span class="mini-label">楷體逐筆</span><div class="stroke-cells">${stageHtml}</div></div>`)+
+      practiceHtml(block,entry);
   }
 
   if (block.type === 'practice'||block.type==='symbol-grid') {
-    content = practiceHtml(block);
+    content = practiceHtml(block,entry);
   }
 
   return `<section class="block selectable ${selected}" style="height:${height}px;--stroke-height:${PAGE.strokeRow * Math.max(1, Math.ceil(stageCount / PAGE.strokesPerRow))}px" data-block="${escapeHtml(block.id)}"`+
-    ` data-block-type="${block.type}" draggable="true">`+
+    ` data-block-type="${block.type}" data-continuation="${continuation}" draggable="true">`+
     `<div class="block-toolbar" title="拖曳調整順序">⠿</div>${content}</section>`;
 }
 
@@ -248,13 +254,13 @@ function renderSheet() {
     return `<article class="sheet worksheet-page" ${paperAttributes} id="page-${index + 1}" data-page="${index}" aria-label="第 ${index + 1} 頁">${header}`+
       `<div class="sheet-body">${page.entries.map(renderBlock).join('')}</div>${footer}</article>`;
   }).join('')+(credits.length?`<article class="sheet credits-page" ${paperAttributes} id="page-${previewPageCount}" aria-label="素材來源"><div class="source-body"><h2>素材來源</h2><p>本文件使用 ${credits.length} 個字形／注音符號的官方累積逐筆字卡。</p><dl><dt>著作權人</dt><dd>中華民國教育部</dd><dt>來源</dt><dd>國字標準字體筆順學習網<br><a href="https://stroke-order.learningweb.moe.edu.tw/">https://stroke-order.learningweb.moe.edu.tw/</a></dd><dt>授權</dt><dd>創用 CC 姓名標示－非商業性－禁止改作 3.0 臺灣版<br><a href="https://creativecommons.org/licenses/by-nc-nd/3.0/tw/">https://creativecommons.org/licenses/by-nc-nd/3.0/tw/</a></dd></dl><p>字卡保留官方原始 SVG 檔案內容。</p></div></article>`:'');
-  $('pageStatus').textContent = `${pages.length} 頁練習${credits.length?' ＋ 1 頁素材來源':''} · ${grid.columns} 格 / 行${!blocks.some(block=>block.type==='symbol-grid')&&grid.rows>1?' · 每組 2 行':''}`;
-  $('addTextRow').textContent=grid.rows>1?'＋ 加入描紅組':'＋ 加入描紅行';
-  $('addBlankRow').textContent=grid.rows>1?'＋ 空白練習組':'＋ 空白練習行';
+  $('pageStatus').textContent = `${pages.length} 頁練習${credits.length?' ＋ 1 頁素材來源':''} · ${grid.columns} 格 / 行${!blocks.some(block=>block.type==='symbol-grid'||block.cellCount!=null)&&grid.rows>1?' · 每組 2 行':''}`;
+  $('addTextRow').textContent='＋ 加入描紅格';
+  $('addBlankRow').textContent='＋ 加入空白格';
   $('pageSelect').innerHTML = Array.from({length:previewPageCount},(_, i) => `<option value="${i}" ${i === activePage ? 'selected' : ''}>${i<pages.length?`第 ${i + 1} 頁`:'素材來源'}</option>`).join('');
   if ($('moveToPage')) {
     const selectedPage=pages.findIndex(page=>page.entries.some(entry=>entry.block.id===selectedId));
-    $('moveToPage').innerHTML=pages.map((_,i)=>`<option value="${i}" ${i===selectedPage?'selected':''}>第 ${i+1} 頁</option>`).join('');
+    $('moveToPage').innerHTML=pages.map((page,i)=>`<option ${page.entries[0]?.continuation?'disabled':''} value="${i}" ${i===selectedPage?'selected':''}>第 ${i+1} 頁</option>`).join('');
   }
   renderPageButtons();
   const signatures=blocks.filter(block=>block.type!=='heading');
@@ -317,7 +323,8 @@ function renderInspector() {
   const grid=gridForBlock(block,documentOptions().gridSize);
   const symbolGrid=block.type==='symbol-grid';
   const multiline=grid.rows>1;
-  const fillLimit=symbolGrid?Math.min(characters(block.text).length,grid.capacity):grid.capacity;
+  const requested=requestedCellCount(block,documentOptions().gridSize);
+  const fillLimit=symbolGrid?Math.min(characters(block.text).length,requested):requested;
   const displayCount=Math.min(block.count??0,fillLimit);
   const typeName = {'symbol-grid':'注音全描紅',heading:'分組標題', character:'單字逐筆', practice:multiline?`${grid.label}練習組 · 2 行`:'12 格練習行'}[block.type];
   let html = `<div class="inspector-type">${typeName}</div>`+
@@ -329,7 +336,12 @@ function renderInspector() {
   if (block.type === 'heading') {
     html += `<label class="field">副標題</label><input class="field-input" id="insSub" value="${escapeHtml(block.sub || '')}">`;
   } else {
-    html += `<div class="cell-summary" id="cellSummary" role="status"></div><label class="field">自動填字格數 <span id="countValue">${displayCount}</span> / ${fillLimit}</label>`+
+    html += `<label class="field" for="insCellCount">每組格數（末行自動補齊）</label>`+
+      `<div class="grid-count-controls"><input class="field-input" id="insCellCount" type="number" min="1" max="240" step="1" value="${requested}"><button id="applyCellCount">套用</button></div>`+
+      `<div class="help">依目前字格換行，共 ${grid.capacity} 格（含末行補格）。</div>`+
+      `<label class="field" for="insAddCells">追加空白格數</label>`+
+      `<div class="grid-count-controls"><input class="field-input" id="insAddCells" type="number" min="1" max="240" step="1" value="${gridIncrement}"><button id="appendCells">＋ 增加</button></div>`+
+      `<div class="cell-summary" id="cellSummary" role="status"></div><label class="field">自動填字格數 <span id="countValue">${displayCount}</span> / ${fillLimit}</label>`+
       `<input type="range" id="insCount" min="0" max="${fillLimit}" value="${displayCount}" class="range">`+
       `<div class="help">空白格內不放文字或字圖；格線樣式可在左側設定。</div>`+
       `<button id="clearRow" class="mini" style="width:100%;margin-top:8px">${multiline?`清空本組 ${grid.capacity} 格`:'清空本行 12 格'}</button>`;
@@ -350,10 +362,22 @@ function renderInspector() {
   const pageIndex = pages.findIndex(page => page.entries.some(entry => entry.block.id === block.id));
   html += `<div class="switch"><label for="insPageBreak">此區塊另起一頁</label><input id="insPageBreak" type="checkbox" ${block.pageBreakBefore ? 'checked' : ''}></div>`+
     `<label class="field" for="moveToPage">移到指定頁的開頭</label><select class="field-input" id="moveToPage">`+
-    pages.map((_, index) => `<option value="${index}" ${index === pageIndex ? 'selected' : ''}>第 ${index + 1} 頁</option>`).join('') + '</select>';
+    pages.map((page, index) => `<option ${page.entries[0]?.continuation?'disabled':''} value="${index}" ${index === pageIndex ? 'selected' : ''}>第 ${index + 1} 頁</option>`).join('') + '</select>';
   $('inspector').innerHTML = html;
   updateCellSummary();
 
+  const resizeCells=value=>{
+    try {Object.assign(block,withCellCount(block,value));saveLocal();render();}
+    catch(error){showToast(error.message);}
+  };
+  bind('applyCellCount','click',()=>resizeCells($('insCellCount').value));
+  bind('insCellCount','keydown',event=>{if(event.key==='Enter'){event.preventDefault();resizeCells(event.target.value);}});
+  bind('insAddCells','input',event=>{const value=Number(event.target.value);if(Number.isInteger(value)&&value>0&&value<=240)gridIncrement=value;});
+  bind('appendCells','click',()=>{
+    const value=Number($('insAddCells').value);
+    if(!Number.isInteger(value)||value<1||value>240){showToast('請輸入 1 至 240 的整數格數');return;}
+    resizeCells(requested+value);
+  });
   bind('insText', 'input', event => {
     block.text = event.target.value;
     if (block.type !== 'heading') block.manual = null;
@@ -582,6 +606,7 @@ $('sheet').addEventListener('drop',event => {
     event.preventDefault();
     const node=event.target.closest('[data-block]');
     const page=event.target.closest('[data-page]');
+    if(node?.dataset.continuation==='true'){showToast('這是同一格組的續頁，請拖到格組首段或其他區塊。');draggingBlockId=null;return;}
     const from=blocks.findIndex(b => b.id === draggingBlockId);
     if (node && node.dataset.block !== draggingBlockId) {
       const target=blocks.find(b => b.id === node.dataset.block);
@@ -612,15 +637,17 @@ $('sheet').addEventListener('dragend',() => {
   document.querySelectorAll('.dragging,.drag-over').forEach(e => e.classList.remove('dragging','drag-over'));
 });
 
-bind('addTextRow','click',()=>{if(!sourceText()){showToast('請先輸入練習文字');return;}addBlock(createPracticeRow(sourceText(),6));});
-bind('addBlankRow','click',()=>addBlock(createPracticeRow(sourceText(),0)));
+bind('addTextRow','click',()=>{if(!sourceText()){showToast('請先輸入練習文字');return;}try{addBlock(createPracticeGrid(sourceText(),$('newGridCount').value));}catch(error){showToast(error.message);}});
+bind('addBlankRow','click',()=>{try{addBlock(createPracticeGrid(sourceText(),$('newGridCount').value,0));}catch(error){showToast(error.message);}});
 bind('addHeading','click',()=>addBlock(createHeading('自訂練習主題')));
 bind('addCharPractice','click',()=> {
   const letters=characters(sourceText());
   if(!letters.length){showToast('請先輸入練習文字');return;}
   if (blocks.length + letters.length + 1 > 250) {showToast('單一專案最多 250 個區塊，請減少文字或另存專案');return;}
   const at=blocks.findIndex(b => b.id === selectedId);
-  const newBlocks=[createHeading('新增單字練習'),...letters.map(createCharacterBlock)];
+  let newBlocks;
+  try {newBlocks=[createHeading('新增單字練習'),...letters.map(ch=>withCellCount(createCharacterBlock(ch),$('newGridCount').value))];}
+  catch(error){showToast(error.message);return;}
   blocks.splice(at < 0 ? blocks.length : at+1,0,...newBlocks);
   selectedId=newBlocks[1]?.id;
   saveLocal();render();showToast(`已加入 ${letters.length} 個單字區塊`);
@@ -767,3 +794,5 @@ const officialIndexReady=fetch('./assets/moe-index.json',{signal:AbortSignal.tim
   officialIndexStatus='官方動畫索引無法載入，仍可使用官網查詢連結及離線編輯。';
   renderAssetInfo();
 });
+
+$('newGridCount').value=Math.min(240,Math.max(getGridStyle(documentOptions().gridSize).capacity,characters($('sourceText').value).length));

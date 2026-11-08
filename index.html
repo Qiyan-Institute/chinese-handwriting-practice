@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>正體字帖工坊｜繁體字描紅與筆順練習</title>
 <meta name="description" content="免費開源的繁體字描紅、37 音注音全套、標準筆順與多頁 A4／US Letter 字帖工具，預設孫中山練習範例。">
-<link rel="stylesheet" href="./src/styles.css?v=0.6.1">
+<link rel="stylesheet" href="./src/styles.css?v=0.6.2">
 <style id="printPaperStyle">@page{size:A4;margin:0}</style>
 </head>
 <body>
@@ -36,6 +36,8 @@
       <label class="field" for="blankStyle">空白格樣式</label><select class="field-input" id="blankStyle"><option value="grid">保留米字格，不填字</option><option value="space">無格線，直接留白</option></select>
       <div class="glyph-tray" id="glyphTray"></div>
       <div class="legend">一般點格子只選取。先選字塊可切換填字；Shift＋點格子清空，也可拖放文字。</div>
+      <label class="field" for="newGridCount">每次新增格數</label><input id="newGridCount" class="field-input" type="number" min="1" max="240" step="1" value="12">
+      <div class="legend">可輸入 37 等格數。描紅會依練習文字順序填字，末行補齊，超出紙張會自動分頁；每組最多 240 格。</div>
       <div class="btn-grid"><button id="addTextRow">＋ 加入描紅行</button><button id="addCharPractice">＋ 拆成單字</button><button id="addBlankRow">＋ 空白練習行</button><button id="addHeading">＋ 分組標題</button></div>
     </div>
     <div class="section-ui"><div class="smallcap">02 · 教學範本</div><h2 style="margin-top:7px">循序漸進</h2>
@@ -76,6 +78,6 @@
   <p>中華民國教育部 · <a href="https://stroke-order.learningweb.moe.edu.tw/" target="_blank" rel="noopener noreferrer">國字標準字體筆順學習網</a><br><a href="https://stroke-order.learningweb.moe.edu.tw/page.jsp?ID=52" target="_blank" rel="noopener noreferrer">CC BY-NC-ND 3.0 臺灣版／官方版權說明</a></p>
   <p>需要網路；若動畫未顯示，可關閉視窗後使用官網查詢連結。</p>
 </dialog>
-<script type="module" src="./src/main.js?v=0.6.1"></script>
+<script type="module" src="./src/main.js?v=0.6.2"></script>
 
 </body></html>

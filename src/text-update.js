@@ -1,6 +1,6 @@
 /* Copyright (C) 2026 Qiyan Institute contributors. SPDX-License-Identifier: AGPL-3.0-only */
-import {MAX_SYMBOL_CELLS} from './grid-style.js?v=0.6.1';
-import {characters,createCharacterBlock,newId} from './model.js?v=0.6.1';
+import {MAX_SYMBOL_CELLS} from './grid-style.js?v=0.6.2';
+import {characters,createCharacterBlock,newId} from './model.js?v=0.6.2';
 
 export function updateWorksheetText(blocks,previousText,nextText) {
   const previous=characters(previousText).join('');

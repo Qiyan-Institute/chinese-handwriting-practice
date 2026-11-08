@@ -12,11 +12,16 @@ export const GRID_STYLES = Object.freeze({
 export const getGridStyle = value => GRID_STYLES[value === 'medium' || value === 'large' ? value : 'standard'];
 
 export const MAX_SYMBOL_CELLS = 48;
-export function getSymbolGridStyle(symbolCount, gridSize) {
+export const MAX_GRID_CELLS = 240;
+export function getSizedGridStyle(cellCount, gridSize) {
   const grid=getGridStyle(gridSize);
-  const count=Math.max(1,Math.min(MAX_SYMBOL_CELLS,Math.trunc(Number(symbolCount))||1));
+  const count=Math.max(1,Math.min(MAX_GRID_CELLS,Math.trunc(Number(cellCount))||1));
   const rows=Math.ceil(count/grid.columns);
   const gridHeight=rows*grid.cellSize;
   return {...grid,rows,capacity:rows*grid.columns,gridHeight,
     lineHeight:Math.ceil(gridHeight)+2,practiceHeight:Math.ceil(gridHeight)+4};
+}
+export function getSymbolGridStyle(symbolCount, gridSize) {
+  const count=Math.max(1,Math.min(MAX_SYMBOL_CELLS,Math.trunc(Number(symbolCount))||1));
+  return getSizedGridStyle(count,gridSize);
 }
